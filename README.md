@@ -2,6 +2,12 @@
 
 A lightweight, client-side web application for exploring and filtering log files. LogSieve runs entirely in the browser with no backend required, making it perfect for offline log analysis.
 
+## Links
+
+🌐 **[Try LogSieve Online](https://notesofcliff.github.io/logsieve/)** - Use the hosted version  
+📦 **[GitHub Repository](https://github.com/notesofcliff/logsieve)** - View source code  
+💖 **[Support Development](https://github.com/sponsors/notesofcliff)** - Sponsor on GitHub
+
 ## Features
 
 - **File drag-and-drop** - Load `.log`, `.txt`, `.json`, or `.ndjson` files instantly

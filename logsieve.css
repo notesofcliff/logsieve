@@ -62,6 +62,22 @@ h1 {
   font-weight: 700;
 }
 
+/* Button-like Links */
+header a {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: 500;
+  color: var(--ink);
+  background-color: var(--ring);
+  transition: background-color 0.3s ease;
+}
+
+header a:hover {
+  background-color: var(--ring);
+}
+
 /* Layout */
 main {
   padding: 16px;
