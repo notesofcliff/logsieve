@@ -136,7 +136,7 @@ function toggleGroupHighlight(name, on){
 // ===== Events =====
 ['pattern','text','f_i','f_g','f_m','f_s','f_u'].forEach(id=> $('#'+id).addEventListener('input', render));
 $('#sample').addEventListener('click', ()=>{
-  $('#pattern').value = '(?<ip>\\d{1,3}(?:\\.\\d{1,3}){3}) - (?<user>\\w+) \[(?<ts>[^\]]+)\] "(?<verb>[A-Z]+) (?<path>[^\s]+)';
+  $('#pattern').value = '(?<ip>\\d{1,3}(?:\\.\\d{1,3}){3}) - (?<user>\\w+) \\[(?<ts>[0-9\\- :]*?)\\] "(?<verb>[A-Z]+) (?<path>[^s]+)';
   $('#text').value = `127.0.0.1 - cliff [2025-11-05 13:22:01] "GET /index.html" 200\n10.2.3.4 - alice [2025-11-05 13:22:05] "POST /api/login" 401\ninvalid line...`;
   render();
 });
