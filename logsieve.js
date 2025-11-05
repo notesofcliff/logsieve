@@ -485,9 +485,69 @@ function initializeEventHandlers() {
   });
 }
 
+// ---------- Theme Toggle ----------
+
+/**
+ * Initialize theme based on saved preference or system preference
+ */
+function initializeTheme() {
+  const savedTheme = localStorage.getItem('logsieve-theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  
+  // Use saved theme, or fall back to system preference (default to dark)
+  const isDark = savedTheme ? savedTheme === 'dark' : prefersDark;
+  
+  setTheme(isDark ? 'dark' : 'light');
+}
+
+/**
+ * Set the theme and update UI
+ * @param {string} theme - 'light' or 'dark'
+ */
+function setTheme(theme) {
+  const root = document.documentElement;
+  const themeIcon = $('#themeToggle .theme-icon');
+  
+  if (theme === 'light') {
+    root.classList.add('light-theme');
+    themeIcon.textContent = '☀️';
+  } else {
+    root.classList.remove('light-theme');
+    themeIcon.textContent = '🌙';
+  }
+  
+  // Save preference
+  localStorage.setItem('logsieve-theme', theme);
+}
+
+/**
+ * Toggle between light and dark themes
+ */
+function toggleTheme() {
+  const isLight = document.documentElement.classList.contains('light-theme');
+  setTheme(isLight ? 'dark' : 'light');
+}
+
+/**
+ * Initialize theme toggle functionality
+ */
+function initializeThemeToggle() {
+  const themeToggle = $('#themeToggle');
+  if (themeToggle) {
+    themeToggle.addEventListener('click', toggleTheme);
+  }
+  
+  // Initialize theme on page load
+  initializeTheme();
+}
+
 // Initialize when DOM is loaded
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeEventHandlers);
+  document.addEventListener('DOMContentLoaded', () => {
+    initializeEventHandlers();
+    initializeThemeToggle();
+  });
 } else {
   initializeEventHandlers();
+  initializeThemeToggle();
 }
