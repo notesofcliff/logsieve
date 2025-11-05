@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LogSieve — single‑file web app</title>
+  <link rel="stylesheet" href="logsieve.css">
+</head>
+<body>
+  <header>
+    <h1>LogSieve · single‑file</h1>
+    <div class="tags">
+      <span class="tag" id="fileTag">no file</span>
+      <span class="tag" id="countTag">0 lines</span>
+      <span class="tag" id="filterTag">no filters</span>
+    </div>
+    <div class="right flex">
+      <button class="btn" id="exportJSON">Export JSON</button>
+      <button class="btn ghost" id="exportCSV">Export CSV</button>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="card" style="grid-column:1/-1">
+      <h2>Upload</h2>
+      <div class="pad">
+        <div id="drop" class="drop">
+          Drag & drop a .log/.txt file here, or <button class="btn" id="pick">Browse…</button>
+          <input type="file" id="file" accept=".log,.txt,.json,.ndjson" hidden />
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Filters & Sort</h2>
+      <div class="pad">
+        <div class="controls">
+          <label class="wide"> Search (text/FTS-ish)
+            <input type="search" id="q" placeholder="timeout OR user=alice OR 500" />
+          </label>
+          <label> Level
+            <select id="level">
+              <option value="">Any</option>
+              <option>DEBUG</option>
+              <option>INFO</option>
+              <option>WARNING</option>
+              <option>ERROR</option>
+              <option>CRITICAL</option>
+            </select>
+          </label>
+          <label> From
+            <input type="datetime-local" id="from" />
+          </label>
+          <label> To
+            <input type="datetime-local" id="to" />
+          </label>
+          <label class="wide"> Regex (Python/JS style)
+            <input type="text" id="regex" placeholder="e.g. user=(?<user>\w+)" />
+          </label>
+          <label> Sort
+            <select id="sort">
+              <option value="id">ID</option>
+              <option value="ts">Timestamp</option>
+              <option value="level">Level</option>
+            </select>
+          </label>
+          <label> Order
+            <select id="order">
+              <option value="desc">Desc</option>
+              <option value="asc">Asc</option>
+            </select>
+          </label>
+          <label> Page size
+            <select id="per">
+              <option>25</option>
+              <option selected>50</option>
+              <option>100</option>
+              <option>200</option>
+            </select>
+          </label>
+        </div>
+        <div class="flex" style="margin-top:10px">
+          <button class="btn" id="apply">Apply</button>
+          <button class="btn ghost" id="clear">Clear filters</button>
+          <span class="right pill" id="info">—</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Extractor (named‑group regex)</h2>
+      <div class="pad">
+        <div class="controls">
+          <label class="wide"> Pattern
+            <input type="text" id="extractPattern" placeholder="^\[(?<ts>[^\]]+)\]\s(?<level>\w+)\s(?<message>.*)$" />
+          </label>
+          <label> Apply to
+            <select id="extractScope">
+              <option value="all">All rows</option>
+              <option value="filtered">Filtered rows</option>
+            </select>
+          </label>
+        </div>
+        <div class="flex" style="margin-top:10px">
+          <button class="btn" id="runExtract">Run extractor</button>
+          <span class="pill" id="extractInfo">—</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Summary</h2>
+      <div class="pad">
+        <div class="stats">
+          <div class="stat"><div class="k">Rows</div><div class="v" id="sRows">0</div></div>
+          <div class="stat ok"><div class="k">INFO</div><div class="v" id="sInfo">0</div></div>
+          <div class="stat warn"><div class="k">WARN</div><div class="v" id="sWarn">0</div></div>
+          <div class="stat err"><div class="k">ERROR</div><div class="v" id="sErr">0</div></div>
+        </div>
+        <div style="margin-top:10px">
+          <canvas id="spark"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="grid-column:1/-1">
+      <h2>Events</h2>
+      <div class="pad">
+        <div class="flex" style="margin-bottom:8px">
+          <div class="pagination">
+            <button class="btn" id="prev">◀</button>
+            <span class="pill" id="pageLabel">1 / 1</span>
+            <button class="btn" id="next">▶</button>
+          </div>
+          <span class="right pill" id="renderInfo">—</span>
+        </div>
+        <div style="overflow:auto">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:72px">ID</th>
+                <th style="width:210px">Timestamp</th>
+                <th style="width:120px">Level</th>
+                <th>Message</th>
+                <th style="width:260px">Fields</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="logsieve.js"></script>
+</body>
+</html>
