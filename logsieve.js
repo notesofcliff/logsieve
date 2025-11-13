@@ -310,11 +310,11 @@ let per = 50;         // Items per page
 let fieldNames = new Set();  // Track all extracted field names
 
 /**
- * Parse raw text into structured log entries
+ * Parse raw log text into structured log entries
  * @param {string} text - Raw log file content
  * @returns {Array<Object>} - Array of parsed log entries
  */
-function parseText(text) {
+function parseLogText(text) {
   const out = [];
   const lines = text.split(/\r?\n/);
   let id = 1;
@@ -335,6 +335,215 @@ function parseText(text) {
       fields: {},
       _lc: (line + " " + msg).toLowerCase() // Lowercase for search
     });
+  }
+
+  return out;
+}
+
+/**
+ * Parse CSV data into structured log entries
+ * @param {string} text - CSV file content
+ * @returns {Array<Object>} - Array of parsed log entries
+ */
+function parseCSV(text) {
+  const out = [];
+  const lines = text.split(/\r?\n/).filter(line => line.trim());
+  
+  if (lines.length === 0) return out;
+
+  // Parse CSV (basic implementation, handles quoted fields)
+  function parseCSVLine(line) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      const nextChar = line[i + 1];
+      
+      if (char === '"') {
+        if (inQuotes && nextChar === '"') {
+          current += '"';
+          i++; // Skip next quote
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  }
+
+  // Parse header
+  const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase());
+  
+  // Find standard column indices
+  const idIdx = headers.findIndex(h => h === 'id');
+  const tsIdx = headers.findIndex(h => h === 'ts' || h === 'timestamp' || h === 'time' || h === 'date');
+  const levelIdx = headers.findIndex(h => h === 'level' || h === 'severity' || h === 'loglevel');
+  const msgIdx = headers.findIndex(h => h === 'message' || h === 'msg' || h === 'text' || h === 'description');
+  const rawIdx = headers.findIndex(h => h === 'raw');
+
+  // Parse data rows
+  let rowId = 1;
+  for (let i = 1; i < lines.length; i++) {
+    const values = parseCSVLine(lines[i]);
+    if (values.length === 0 || (values.length === 1 && !values[0])) continue;
+
+    const row = {
+      id: idIdx >= 0 && values[idIdx] ? parseInt(values[idIdx]) : rowId++,
+      ts: '',
+      level: '',
+      message: '',
+      raw: '',
+      fields: {},
+      _lc: ''
+    };
+
+    // Map standard columns
+    if (tsIdx >= 0 && values[tsIdx]) {
+      const d = new Date(values[tsIdx]);
+      row.ts = isNaN(d) ? values[tsIdx] : d.toISOString();
+    }
+    
+    if (levelIdx >= 0 && values[levelIdx]) {
+      row.level = values[levelIdx].toUpperCase();
+      if (row.level === 'WARN') row.level = 'WARNING';
+    }
+    
+    if (msgIdx >= 0 && values[msgIdx]) {
+      row.message = values[msgIdx];
+    }
+    
+    if (rawIdx >= 0 && values[rawIdx]) {
+      row.raw = values[rawIdx];
+    } else {
+      // If no raw column, reconstruct from all values
+      row.raw = values.join(' | ');
+    }
+
+    // Map remaining columns as fields
+    headers.forEach((header, idx) => {
+      if (idx !== idIdx && idx !== tsIdx && idx !== levelIdx && idx !== msgIdx && idx !== rawIdx) {
+        if (values[idx]) {
+          // Parse JSON arrays if present
+          if (values[idx].startsWith('[') && values[idx].endsWith(']')) {
+            try {
+              row.fields[header] = JSON.parse(values[idx]);
+              fieldNames.add(header);
+            } catch (e) {
+              row.fields[header] = [values[idx]];
+              fieldNames.add(header);
+            }
+          } else {
+            row.fields[header] = [values[idx]];
+            fieldNames.add(header);
+          }
+        }
+      }
+    });
+
+    // Build search index
+    row._lc = (row.raw + " " + row.message + " " + Object.values(row.fields).flat().join(" ")).toLowerCase();
+    out.push(row);
+  }
+
+  return out;
+}
+
+/**
+ * Parse JSON data into structured log entries
+ * @param {string} text - JSON file content
+ * @returns {Array<Object>} - Array of parsed log entries
+ */
+function parseJSON(text) {
+  const out = [];
+  let data;
+
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    console.error('Failed to parse JSON:', e);
+    alert('Invalid JSON file: ' + e.message);
+    return out;
+  }
+
+  // Handle both single object and array of objects
+  const items = Array.isArray(data) ? data : [data];
+  
+  let rowId = 1;
+  for (const item of items) {
+    if (typeof item !== 'object' || item === null) continue;
+
+    const row = {
+      id: item.id !== undefined ? item.id : rowId++,
+      ts: '',
+      level: '',
+      message: '',
+      raw: '',
+      fields: {},
+      _lc: ''
+    };
+
+    // Map standard properties
+    if (item.ts || item.timestamp || item.time || item.date) {
+      const tsVal = item.ts || item.timestamp || item.time || item.date;
+      const d = new Date(tsVal);
+      row.ts = isNaN(d) ? String(tsVal) : d.toISOString();
+    }
+
+    if (item.level || item.severity || item.loglevel) {
+      row.level = String(item.level || item.severity || item.loglevel).toUpperCase();
+      if (row.level === 'WARN') row.level = 'WARNING';
+    }
+
+    if (item.message || item.msg || item.text || item.description) {
+      row.message = String(item.message || item.msg || item.text || item.description);
+    }
+
+    if (item.raw) {
+      row.raw = String(item.raw);
+    } else {
+      // Reconstruct raw from JSON
+      row.raw = JSON.stringify(item);
+    }
+
+    // Map remaining properties as fields
+    const standardProps = new Set(['id', 'ts', 'timestamp', 'time', 'date', 'level', 'severity', 
+                                    'loglevel', 'message', 'msg', 'text', 'description', 'raw', '_lc']);
+    
+    for (const [key, value] of Object.entries(item)) {
+      if (!standardProps.has(key)) {
+        // Wrap values in arrays for consistency with extractor output
+        if (Array.isArray(value)) {
+          row.fields[key] = value;
+        } else if (value !== null && value !== undefined) {
+          row.fields[key] = [String(value)];
+        }
+        fieldNames.add(key);
+      }
+    }
+
+    // Also handle nested 'fields' object if present
+    if (item.fields && typeof item.fields === 'object') {
+      for (const [key, value] of Object.entries(item.fields)) {
+        if (Array.isArray(value)) {
+          row.fields[key] = value;
+        } else if (value !== null && value !== undefined) {
+          row.fields[key] = [String(value)];
+        }
+        fieldNames.add(key);
+      }
+    }
+
+    // Build search index
+    row._lc = (row.raw + " " + row.message + " " + Object.values(row.fields).flat().join(" ")).toLowerCase();
+    out.push(row);
   }
 
   return out;
@@ -767,7 +976,22 @@ async function readFileAsText(file) {
 }
 
 /**
- * Handle uploaded file and parse it
+ * Detect file format based on extension
+ * @param {string} filename - Name of the file
+ * @returns {string} - Format type: 'csv', 'json', or 'log'
+ */
+function detectFileFormat(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  
+  if (ext === 'csv') return 'csv';
+  if (ext === 'json') return 'json';
+  
+  // Default to log format for .log, .txt, and unknown extensions
+  return 'log';
+}
+
+/**
+ * Handle uploaded file and parse it based on format
  * @param {File} file - File object to process
  */
 async function handleFile(file) {
@@ -775,9 +999,27 @@ async function handleFile(file) {
   $("#info").textContent = 'Parsing…';
 
   const text = await readFileAsText(file);
-  rows = parseText(text);
+  const format = detectFileFormat(file.name);
+  
+  // Clear existing field names for new file
+  fieldNames.clear();
+  
+  // Route to appropriate parser
+  switch (format) {
+    case 'csv':
+      rows = parseCSV(text);
+      $("#info").textContent = `Parsed ${fmt(rows.length)} rows from CSV`;
+      break;
+    case 'json':
+      rows = parseJSON(text);
+      $("#info").textContent = `Parsed ${fmt(rows.length)} records from JSON`;
+      break;
+    default:
+      rows = parseLogText(text);
+      $("#info").textContent = `Parsed ${fmt(rows.length)} lines from log file`;
+      break;
+  }
 
-  $("#info").textContent = `Parsed ${fmt(rows.length)} lines`;
   applyFilters();
 }
 

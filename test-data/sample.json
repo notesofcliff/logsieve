@@ -1,0 +1,47 @@
+[
+  {
+    "id": 1,
+    "timestamp": "2025-11-13T10:30:00.123Z",
+    "level": "INFO",
+    "message": "User login successful",
+    "user": "john.doe",
+    "request_id": "req-12345",
+    "ip_address": "192.168.1.100"
+  },
+  {
+    "id": 2,
+    "timestamp": "2025-11-13T10:30:05.456Z",
+    "level": "WARNING",
+    "message": "Slow database query detected",
+    "user": "system",
+    "request_id": "req-12346",
+    "query_time_ms": 5420
+  },
+  {
+    "id": 3,
+    "timestamp": "2025-11-13T10:30:10.789Z",
+    "level": "ERROR",
+    "message": "Failed to connect to service",
+    "user": "api-gateway",
+    "request_id": "req-12347",
+    "error_code": "CONN_TIMEOUT"
+  },
+  {
+    "id": 4,
+    "timestamp": "2025-11-13T10:30:15.012Z",
+    "level": "INFO",
+    "message": "Request processed successfully",
+    "user": "jane.smith",
+    "request_id": "req-12348",
+    "duration_ms": 124
+  },
+  {
+    "id": 5,
+    "timestamp": "2025-11-13T10:30:20.345Z",
+    "level": "ERROR",
+    "message": "Authentication failed, invalid token",
+    "user": "auth-service",
+    "request_id": "req-12349",
+    "error_code": "AUTH_INVALID_TOKEN"
+  }
+]

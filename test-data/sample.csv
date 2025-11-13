@@ -1,0 +1,6 @@
+timestamp,level,message,user,request_id
+2025-11-13T10:30:00.123Z,INFO,User login successful,john.doe,req-12345
+2025-11-13T10:30:05.456Z,WARNING,Slow database query detected,system,req-12346
+2025-11-13T10:30:10.789Z,ERROR,Failed to connect to service,api-gateway,req-12347
+2025-11-13T10:30:15.012Z,INFO,Request processed successfully,jane.smith,req-12348
+2025-11-13T10:30:20.345Z,ERROR,"Authentication failed, invalid token",auth-service,req-12349

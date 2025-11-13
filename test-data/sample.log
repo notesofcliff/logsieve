@@ -1,0 +1,5 @@
+2025-11-13T10:30:00.123Z INFO User login successful user=john.doe request_id=req-12345
+2025-11-13T10:30:05.456Z WARNING Slow database query detected user=system request_id=req-12346
+2025-11-13T10:30:10.789Z ERROR Failed to connect to service user=api-gateway request_id=req-12347
+2025-11-13T10:30:15.012Z INFO Request processed successfully user=jane.smith request_id=req-12348
+2025-11-13T10:30:20.345Z ERROR Authentication failed, invalid token user=auth-service request_id=req-12349
