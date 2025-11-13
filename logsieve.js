@@ -1510,6 +1510,13 @@ function initializeEventHandlers() {
   });
 
   // Pagination
+  $("#first").addEventListener('click', () => {
+    if (page > 1) {
+      page = 1;
+      render();
+    }
+  });
+
   $("#prev").addEventListener('click', () => {
     if (page > 1) {
       page--;
@@ -1521,6 +1528,14 @@ function initializeEventHandlers() {
     const max = Math.max(1, Math.ceil(view.length / per));
     if (page < max) {
       page++;
+      render();
+    }
+  });
+
+  $("#last").addEventListener('click', () => {
+    const max = Math.max(1, Math.ceil(view.length / per));
+    if (page < max) {
+      page = max;
       render();
     }
   });
