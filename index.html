@@ -2,23 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
   <title>LogSieve — single‑file web app</title>
   <link rel="stylesheet" href="logsieve.css">
 </head>
 <body>
   <header>
-    <h1>LogSieve · single‑file</h1>
-    <div class="links" style="margin-bottom: 10px;">
+    <div class="header-top">
+      <h1>LogSieve · single‑file</h1>
+      <button class="btn theme-toggle" id="themeToggle" title="Toggle theme">
+        <span class="theme-icon">🌙</span>
+      </button>
+    </div>
+    <div class="header-links">
       <a class="tag" href="https://github.com/notesofcliff/logsieve" target="_blank">📦 Source Code</a>
       <a class="tag" href="https://github.com/sponsors/notesofcliff" target="_blank">💖 Sponsor</a>
       <a class="tag" href="https://github.com/notesofcliff/logsieve/issues" target="_blank">🐞 Report an Issue</a>
       <a class="tag" href="regexlab.html">🧪 RegexLab</a>
     </div>
-    <div class="right flex">
-      <button class="btn theme-toggle" id="themeToggle" title="Toggle theme">
-        <span class="theme-icon">🌙</span>
-      </button>
+    <div class="header-actions">
       <button class="btn ghost" id="exportLibrary" title="Export extractors & filters">💾 Export Library</button>
       <button class="btn ghost" id="importLibrary" title="Import extractors & filters">📥 Import Library</button>
       <input type="file" id="importFile" accept=".json" hidden />
