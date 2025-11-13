@@ -1,0 +1,30 @@
+[2025-11-12 10:15:23] INFO Application started successfully
+[2025-11-12 10:15:24] INFO Connected to database at localhost:5432
+[2025-11-12 10:15:25] DEBUG Loading configuration from /etc/app/config.json
+[2025-11-12 10:16:01] INFO User alice logged in from 192.168.1.100
+[2025-11-12 10:16:15] INFO User bob logged in from 192.168.1.101
+[2025-11-12 10:17:30] WARNING Connection pool nearing capacity: 45/50 connections
+[2025-11-12 10:18:45] ERROR Failed to process request: timeout after 30s
+[2025-11-12 10:18:46] INFO Retrying request with exponential backoff
+[2025-11-12 10:18:50] INFO Request succeeded on retry attempt 2
+[2025-11-12 10:19:12] INFO User alice performed action: create_document doc_id=12345
+[2025-11-12 10:20:00] DEBUG Cache hit ratio: 0.85 (8500/10000 requests)
+[2025-11-12 10:21:33] WARNING Disk usage at 78% on /var/data
+[2025-11-12 10:22:15] ERROR Database connection lost: connection refused
+[2025-11-12 10:22:16] CRITICAL Unable to reconnect to database after 5 attempts
+[2025-11-12 10:22:20] INFO Failover to secondary database initiated
+[2025-11-12 10:22:25] INFO Successfully connected to secondary database
+[2025-11-12 10:23:00] INFO User bob performed action: delete_document doc_id=12340
+[2025-11-12 10:24:15] DEBUG Processing background job: cleanup_temp_files
+[2025-11-12 10:25:30] INFO Background job completed in 75s
+[2025-11-12 10:26:45] WARNING API rate limit approaching for client_id=xyz123: 950/1000 requests
+[2025-11-12 10:27:00] ERROR Invalid authentication token from 203.0.113.42
+[2025-11-12 10:28:12] INFO User charlie logged in from 192.168.1.102
+[2025-11-12 10:29:33] INFO Scheduled maintenance will begin in 30 minutes
+[2025-11-12 10:30:00] DEBUG Memory usage: 2.4GB / 4.0GB (60%)
+[2025-11-12 10:31:45] ERROR Failed to send notification email: SMTP timeout
+[2025-11-12 10:32:00] WARNING Retry queue size growing: 127 pending items
+[2025-11-12 10:33:15] INFO User alice logged out
+[2025-11-12 10:34:30] INFO User bob logged out
+[2025-11-12 10:35:00] DEBUG Compacting database indexes
+[2025-11-12 10:36:20] INFO Database optimization complete

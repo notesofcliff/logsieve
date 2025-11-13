@@ -1,0 +1,92 @@
+{
+  "extractors": [
+    {
+      "id": "apache-common",
+      "name": "Apache Common Log Format",
+      "pattern": "^(?<ip>\\S+) \\S+ \\S+ \\[(?<ts>[^\\]]+)\\] \"(?<method>\\w+) (?<path>\\S+) (?<protocol>[^\"]+)\" (?<status>\\d+) (?<bytes>\\d+)",
+      "description": "Parse Apache/Nginx access logs in Common Log Format",
+      "enabled": true,
+      "created": "2025-11-12T00:00:00Z"
+    },
+    {
+      "id": "bracketed-standard",
+      "name": "Bracketed Log Format",
+      "pattern": "^\\[(?<ts>[^\\]]+)\\]\\s+(?<level>\\w+)\\s+(?<message>.*)",
+      "description": "Standard format: [timestamp] LEVEL message",
+      "enabled": true,
+      "created": "2025-11-12T00:00:00Z"
+    },
+    {
+      "id": "user-action",
+      "name": "User Action Extractor",
+      "pattern": "User\\s+(?<user>\\w+)\\s+(?<action>\\w+)",
+      "description": "Extract username and action from log messages",
+      "enabled": false,
+      "created": "2025-11-12T00:00:00Z"
+    },
+    {
+      "id": "ip-extractor",
+      "name": "IP Address Extractor",
+      "pattern": "(?<ip>\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})",
+      "description": "Extract IP addresses from log messages",
+      "enabled": false,
+      "created": "2025-11-12T00:00:00Z"
+    },
+    {
+      "id": "key-value",
+      "name": "Key-Value Pairs",
+      "pattern": "(?<key>\\w+)=(?<value>\\S+)",
+      "description": "Extract key=value pairs from logs",
+      "enabled": false,
+      "created": "2025-11-12T00:00:00Z"
+    }
+  ],
+  "filters": [
+    {
+      "id": "errors-only",
+      "name": "Errors Only",
+      "description": "Show only ERROR and CRITICAL level logs",
+      "query": "",
+      "level": "ERROR",
+      "from": "",
+      "to": "",
+      "regex": "",
+      "sort": "ts",
+      "order": "desc",
+      "created": "2025-11-12T00:00:00Z"
+    },
+    {
+      "id": "recent-critical",
+      "name": "Recent Critical Issues",
+      "description": "Critical errors sorted by most recent",
+      "query": "",
+      "level": "CRITICAL",
+      "from": "",
+      "to": "",
+      "regex": "",
+      "sort": "ts",
+      "order": "desc",
+      "created": "2025-11-12T00:00:00Z"
+    },
+    {
+      "id": "user-activity",
+      "name": "User Activity",
+      "description": "Track user login/logout events",
+      "query": "logged",
+      "level": "",
+      "from": "",
+      "to": "",
+      "regex": "",
+      "sort": "ts",
+      "order": "asc",
+      "created": "2025-11-12T00:00:00Z"
+    }
+  ],
+  "activeExtractors": [],
+  "prefs": {
+    "defaultPageSize": 50,
+    "extractorMergeStrategy": "last-wins"
+  },
+  "exportDate": "2025-11-12T00:00:00Z",
+  "version": "1.0"
+}

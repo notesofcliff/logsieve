@@ -13,6 +13,9 @@ A lightweight, client-side web application for exploring and filtering log files
 - **File drag-and-drop** - Load `.log`, `.txt`, `.json`, or `.ndjson` files instantly
 - **Real-time filtering** - Search text, filter by log level, date range, and regex patterns
 - **Field extraction** - Use named-group regex to extract structured data from logs
+- **Extractor library** - Save and reuse regex patterns, apply multiple extractors at once
+- **Saved filters** - Store filter presets for quick access to common queries
+- **Import/export** - Share extractor libraries and filter configurations across devices
 - **Visual summaries** - Get log level counts and timeline sparkline charts
 - **Export capabilities** - Export filtered results as JSON or CSV
 - **Completely offline** - No data leaves your machine, no server required
@@ -23,6 +26,25 @@ A lightweight, client-side web application for exploring and filtering log files
 2. Open `index.html` in any modern web browser
 3. Drag and drop a log file or use the "Browse" button
 4. Start filtering and analyzing your logs
+
+### Using Saved Extractors
+
+1. Click **"+ New Extractor"** to create a regex pattern
+2. Enter a name like "Apache Access Log" and pattern: `^(?<ip>\S+) .* "(?<method>\w+) (?<path>\S+)"`
+3. Check the box to enable, then click **"▶ Run Active"**
+4. Extracted fields appear as individual columns in the table (one column per field)
+5. Each field can be sorted independently and exports cleanly to CSV
+
+**Multiple Matches:** If your regex matches multiple times per line (e.g., `(?<num>\d+)` to extract all numbers), LogSieve captures all occurrences as an array. Single values display normally; arrays show as JSON.
+
+To quickly try pre-configured patterns, click **"📥 Import Library"** and select `sample-extractors.json`.
+
+### Saving Filters
+
+1. Set up your filters (search text, log level, date range, etc.)
+2. Click **"💾 Save Current Filter"**  
+3. Enter a name like "Critical Errors" and save
+4. Later, click the filter name to instantly reapply all settings
 
 ---
 
@@ -42,10 +64,15 @@ Traditional log analysis often involves switching between multiple command-line 
 LogSieve consists of three main files:
 
 - **`index.html`** - Main HTML structure and UI elements
-- **`logsieve.css`** - Styling and visual design  
+- **`logsieve.css`** - Styling and visual design
 - **`logsieve.js`** - Core functionality and log processing logic
 
-The application totals approximately 900 lines of HTML, CSS, and vanilla JavaScript with no external dependencies.
+The application uses vanilla JavaScript with no external dependencies. Recent enhancements include:
+
+- **Storage module**: localStorage management for extractors and filters
+- **Multi-extractor logic**: Apply multiple patterns with configurable merge strategies  
+- **UI management**: Modal dialogs, collapsible sections, library lists
+- **Sample library**: `sample-extractors.json` with pre-configured common patterns
 
 ### Log Parsing
 
@@ -104,6 +131,25 @@ Sorting is implemented efficiently with a simple comparison function:
 v.sort((a,b) => a[sort] < b[sort] ? -1 : 1);
 ```
 
+#### Saved Filters
+
+Save complete filter configurations for quick access to common queries:
+
+```js
+{
+  name: "Critical Errors",
+  query: "database",
+  level: "ERROR",
+  from: "2025-11-01T00:00",
+  to: "2025-11-30T23:59",
+  regex: "connection.*failed",
+  sort: "ts",
+  order: "desc"
+}
+```
+
+Saved filters capture all active search parameters including text queries, log levels, date ranges, regex patterns, and sort order. Apply any saved filter with one click to instantly reproduce complex filter combinations. All filter presets are stored locally in the browser.
+
 ### Field Extraction
 
 LogSieve supports **named-group regex extraction** for structured data parsing.
@@ -114,9 +160,31 @@ Provide a pattern like:
 ^\[(?<ts>[^]]+)\]\s(?<level>\w+)\s(?<message>.*)$
 ```
 
-The extractor automatically populates captured groups into the `fields` object for each matching row. If your regex includes `ts`, `level`, or `message` groups, they'll replace the auto-detected values.
+The extractor automatically populates captured groups as individual table columns. If your regex includes `ts`, `level`, or `message` groups, they'll replace the auto-detected values. Other named groups appear as sortable columns and export as separate CSV fields.
 
-This feature enables quick normalization of arbitrary log formats into structured data.
+LogSieve uses `matchAll` to capture all occurrences of a pattern within each log line. For example, `(?<num>\d+)` extracts all numbers as an array `[1, 2, 3]` rather than just the first match. Single values display as plain text; multiple values display as JSON arrays.
+
+This feature enables quick normalization of arbitrary log formats into structured, sortable, exportable data.
+
+#### Extractor Library
+
+Save frequently-used regex patterns to the **Extractor Library** for easy reuse:
+
+- Create named extractors with descriptions
+- Enable or disable individual extractors via checkboxes
+- Apply multiple extractors simultaneously
+- Edit and delete saved patterns
+- Import/export extractor libraries to share with teammates
+
+When multiple extractors match the same line, a configurable merge strategy determines how fields are combined (default: last-match-wins). Choose from:
+
+- **Last Wins** - Later extractors override earlier captures
+- **First Wins** - Keep first captured value, skip later ones  
+- **Merge** - Combine all values (currently same as last-wins)
+
+Configure the merge strategy in the Settings section. All extractors are stored in browser localStorage, keeping your data completely private.
+
+A sample extractor library (`sample-extractors.json`) is included with common patterns for Apache logs, bracketed formats, user actions, IP addresses, and key-value pairs.
 
 ### Summary Statistics
 
@@ -138,6 +206,31 @@ drawSpark(canvas, [...buckets.values()]);
 
 This provides a visual "heartbeat" of log activity over time.
 
+### Storage Architecture
+
+LogSieve uses browser localStorage to persist user preferences, saved extractors, and filter presets:
+
+```javascript
+localStorage keys:
+- logsieve-extractors         // Saved regex patterns
+- logsieve-filters             // Filter presets
+- logsieve-active-extractors   // Currently enabled extractors
+- logsieve-prefs               // User preferences
+- logsieve-theme               // Theme preference
+```
+
+The storage layer is designed with a modular architecture that can be extended for cloud sync:
+
+```javascript
+const Storage = {
+  local: { /* localStorage implementation */ },
+  remote: { /* Future: API calls to backend */ },
+  current: local  // Switch based on auth state
+}
+```
+
+This architecture allows seamless transition between offline-only and cloud-synced modes without changing the core application logic.
+
 ## Deployment
 
 LogSieve requires no build process or backend infrastructure:
@@ -150,12 +243,30 @@ All log processing happens client-side, so user data never leaves their machine.
 
 ## Development Roadmap
 
-Potential future enhancements include:
+### Completed
+- ✅ Persistent extractors in localStorage
+- ✅ Saved filter presets
+- ✅ Multi-extractor support
+- ✅ Import/export library functionality
 
+### Planned Enhancements
 - Chunked parsing for 100MB+ logs (via Web Workers)
-- Persistent extractors in localStorage
 - Color-coding rule engine for log entries
 - Additional export formats
+- Cloud sync layer with Django backend
+- User authentication and cross-device sync
+- REST API for shared extractor libraries
+
+## Browser Compatibility
+
+LogSieve requires modern browser features:
+
+- ES6+ JavaScript support
+- localStorage API (for saving extractors and filters)
+- FileReader API (for loading log files)
+- CSS Grid and Flexbox (for responsive layout)
+
+Tested on Chrome, Firefox, Edge, and Safari (latest versions).
 
 ## Contributing
 
@@ -165,6 +276,8 @@ LogSieve is designed to be simple and self-contained. Contributions should maint
 - Client-side only processing  
 - Minimal setup requirements
 - Privacy-focused (data never leaves the browser)
+
+All new features are additive and maintain backwards compatibility with the original single-extractor functionality.
 
 ## License
 

@@ -19,8 +19,11 @@
       <button class="btn theme-toggle" id="themeToggle" title="Toggle theme">
         <span class="theme-icon">🌙</span>
       </button>
-      <button class="btn" id="exportJSON">Export JSON</button>
-      <button class="btn ghost" id="exportCSV">Export CSV</button>
+      <button class="btn ghost" id="exportLibrary" title="Export extractors & filters">💾 Export Library</button>
+      <button class="btn ghost" id="importLibrary" title="Import extractors & filters">📥 Import Library</button>
+      <input type="file" id="importFile" accept=".json" hidden />
+      <button class="btn" id="exportJSON">Export Data</button>
+      <button class="btn ghost" id="exportCSV">CSV</button>
     </div>
   </header>
 
@@ -31,6 +34,29 @@
         <div id="drop" class="drop">
           Drag & drop a .log/.txt file here, or <button class="btn" id="pick">Browse…</button>
           <input type="file" id="file" accept=".log,.txt,.json,.ndjson" hidden />
+        </div>
+      </div>
+    </section>
+
+    <section class="card" style="grid-column:1/-1">
+      <h2 class="collapsible-header collapsed">
+        <span class="collapse-icon">▼</span> 💡 New Features Guide
+      </h2>
+      <div class="pad collapsible-content collapsed">
+        <div style="font-size:13px; line-height:1.6; color:var(--muted)">
+          <p><strong>📚 Extractor Library:</strong> Save and reuse regex patterns with named groups. Check the boxes to activate extractors, then click "▶ Run Active" to apply them. Great for parsing structured log formats like Apache, Nginx, or custom application logs.</p>
+          
+          <p><strong>🔖 Saved Filters:</strong> Save your frequently-used filter combinations for quick access. Click "💾 Save Current Filter" after setting up your desired filters (search text, level, date range, etc.).</p>
+          
+          <p><strong>💾 Import/Export Library:</strong> Use the header buttons to backup your extractors and filters, or share them with team members. The export includes all your saved patterns and presets.</p>
+          
+          <p><strong>💡 Tips:</strong></p>
+          <ul style="margin:8px 0; padding-left:20px">
+            <li>Use named groups in regex like <code>(?&lt;user&gt;\w+)</code> to extract structured data</li>
+            <li>Multiple extractors run in order - use the Merge Strategy dropdown in Extractor Library to control how overlapping fields are handled</li>
+            <li>All data stays in your browser - extractors and filters are saved in localStorage</li>
+            <li>Press ESC to close modals quickly</li>
+          </ul>
         </div>
       </div>
     </section>
@@ -92,22 +118,65 @@
     </section>
 
     <section class="card" style="grid-column:1/-1">
-      <h2>Extractor (named‑group regex)</h2>
-      <div class="pad">
-        <div class="controls">
-          <label class="wide"> Pattern
-            <input type="text" id="extractPattern" placeholder="^\[(?<ts>[^\]]+)\]\s(?<level>\w+)\s(?<message>.*)$" />
-          </label>
-          <label> Apply to
-            <select id="extractScope">
+      <h2 class="collapsible-header">
+        <span class="collapse-icon">▼</span> Extractor Library
+      </h2>
+      <div class="pad collapsible-content">
+        <div class="flex" style="margin-bottom:10px">
+          <button class="btn" id="addExtractor" title="Create a new regex extractor">+ New Extractor</button>
+          <button class="btn ghost" id="runActiveExtractors" title="Apply all checked extractors">▶ Run Active</button>
+          <label style="margin-left:10px"> Apply to
+            <select id="extractScope" title="Choose whether to apply extractors to all rows or only filtered rows">
               <option value="all">All rows</option>
               <option value="filtered">Filtered rows</option>
             </select>
           </label>
+          <span class="right pill" id="extractInfo">—</span>
         </div>
-        <div class="flex" style="margin-top:10px">
-          <button class="btn" id="runExtract">Run extractor</button>
-          <span class="pill" id="extractInfo">—</span>
+        
+        <div class="controls" style="margin-bottom:10px">
+          <label> Merge Strategy
+            <select id="mergeStrategy" title="How to handle when multiple extractors capture the same field">
+              <option value="last-wins">Last Wins - Later extractors override earlier ones</option>
+              <option value="first-wins">First Wins - Keep first captured value, skip later ones</option>
+              <option value="merge">Merge - Combine all values (same as last-wins)</option>
+            </select>
+          </label>
+          <div style="font-size:0.85em; color:var(--muted); margin-top:5px; line-height:1.4">
+            When multiple active extractors capture the same field name, this setting determines which value is kept.
+          </div>
+        </div>
+        
+        <div id="extractorList" class="library-list">
+          <div class="empty-state">No extractors saved. Click "+ New Extractor" to create one.</div>
+        </div>
+
+        <details style="margin-top:15px">
+          <summary style="cursor:pointer; font-weight:500">Quick Test (one-time pattern)</summary>
+          <div class="controls" style="margin-top:10px">
+            <label class="wide"> Pattern
+              <input type="text" id="extractPattern" placeholder="^\[(?<ts>[^\]]+)\]\s(?<level>\w+)\s(?<message>.*)$" />
+            </label>
+          </div>
+          <div class="flex" style="margin-top:10px">
+            <button class="btn" id="runExtract">Test Pattern</button>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section class="card" style="grid-column:1/-1">
+      <h2 class="collapsible-header">
+        <span class="collapse-icon">▼</span> Saved Filters
+      </h2>
+      <div class="pad collapsible-content">
+        <div class="flex" style="margin-bottom:10px">
+          <button class="btn" id="saveCurrentFilter" title="Save the current filter settings as a preset">💾 Save Current Filter</button>
+          <span class="right pill" id="filterLibInfo">—</span>
+        </div>
+        
+        <div id="filterList" class="library-list">
+          <div class="empty-state">No filters saved. Apply filters and click "Save Current Filter".</div>
         </div>
       </div>
     </section>
@@ -146,12 +215,11 @@
         <div style="overflow:auto">
           <table>
             <thead>
-              <tr>
+              <tr id="thead-row">
                 <th style="width:72px">ID</th>
                 <th style="width:210px">Timestamp</th>
                 <th style="width:120px">Level</th>
                 <th>Message</th>
-                <th style="width:260px">Fields</th>
               </tr>
             </thead>
             <tbody id="tbody"></tbody>
@@ -160,6 +228,61 @@
       </div>
     </section>
   </main>
+
+  <!-- Extractor Modal -->
+  <div id="extractorModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="extractorModalTitle">New Extractor</h3>
+        <button class="modal-close" id="closeExtractorModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label>Name
+          <input type="text" id="extractorName" placeholder="e.g., Apache Access Log" />
+        </label>
+        <label>Pattern (regex with named groups)
+          <textarea id="extractorPattern" rows="3" placeholder="^\[(?<ts>[^\]]+)\]\s(?<level>\w+)\s(?<message>.*)$"></textarea>
+        </label>
+        <label>Description (optional)
+          <input type="text" id="extractorDesc" placeholder="Brief description of what this extracts" />
+        </label>
+        <label style="display:flex; align-items:center; gap:8px">
+          <input type="checkbox" id="extractorEnabled" checked />
+          <span>Enabled by default</span>
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn ghost" id="cancelExtractor">Cancel</button>
+        <button class="btn" id="saveExtractor">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Modal -->
+  <div id="filterModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="filterModalTitle">Save Filter</h3>
+        <button class="modal-close" id="closeFilterModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label>Name
+          <input type="text" id="filterName" placeholder="e.g., Critical Errors" />
+        </label>
+        <label>Description (optional)
+          <input type="text" id="filterDesc" placeholder="Brief description of this filter preset" />
+        </label>
+        <div class="filter-preview">
+          <strong>Current filter settings:</strong>
+          <div id="filterPreview" style="margin-top:8px; font-size:0.9em; color:var(--text-dim)"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn ghost" id="cancelFilter">Cancel</button>
+        <button class="btn" id="saveFilter">Save</button>
+      </div>
+    </div>
+  </div>
 
   <script src="logsieve.js"></script>
 </body>
