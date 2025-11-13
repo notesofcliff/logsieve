@@ -81,7 +81,6 @@ header a:hover {
 /* Layout */
 main {
   padding: 16px;
-  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -309,6 +308,11 @@ select:focus {
 }
 
 /* Tables */
+.table-container {
+  margin: 0 -12px;
+  padding: 0 12px;
+}
+
 table {
   width: 100%;
   border-collapse: separate;
