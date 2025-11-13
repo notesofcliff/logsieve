@@ -12,6 +12,7 @@ A lightweight, client-side web application for exploring and filtering log files
 
 - **File drag-and-drop** - Load `.log`, `.txt`, `.json`, or `.ndjson` files instantly
 - **Real-time filtering** - Search text, filter by log level, date range, and regex patterns
+- **Multi-line events** - Automatically groups Python tracebacks, stack traces, and other multi-line exceptions
 - **Field extraction** - Use named-group regex to extract structured data from logs
 - **Extractor library** - Save and reuse regex patterns, apply multiple extractors at once
 - **Saved filters** - Store filter presets for quick access to common queries
@@ -99,6 +100,26 @@ function guessLevel(line) {
 }
 ```
 
+#### Multi-line Event Support
+
+LogSieve supports **multi-line log events** such as Python tracebacks, Java stack traces, and other exceptions that span multiple lines. When a continuation line is detected (indented lines, stack frames, exception details), it's automatically merged with the parent log entry:
+
+```
+2025-11-13T10:30:10.789Z ERROR Failed to process request
+Traceback (most recent call last):
+  File "/app/main.py", line 45, in process_request
+    result = calculate_total(items)
+AttributeError: 'NoneType' object has no attribute 'price'
+```
+
+The parser recognizes common patterns for continuation lines:
+- Python tracebacks (`Traceback (most recent call last):`, `File "..." line X`)
+- Java/JavaScript stack traces (lines starting with whitespace + `at`)
+- Exception messages (indented `XxxError:` or `XxxException:`)
+- Any line starting with significant indentation (2+ spaces or tabs)
+
+Multi-line events are treated as a single log entry, making it easy to search, filter, and analyze complete error contexts.
+
 After parsing, each log entry is structured as:
 
 ```js
@@ -111,6 +132,8 @@ After parsing, each log entry is structured as:
   fields: {}
 }
 ```
+
+For multi-line events, both `message` and `raw` contain the complete text including all continuation lines joined with newlines.
 
 ### Filtering and Search
 

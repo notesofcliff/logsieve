@@ -1,0 +1,41 @@
+2025-11-13T10:30:00.123Z INFO User login successful user=john.doe request_id=req-12345
+2025-11-13T10:30:05.456Z WARNING Slow database query detected user=system request_id=req-12346
+2025-11-13T10:30:10.789Z ERROR Failed to process request
+Traceback (most recent call last):
+  File "/app/main.py", line 45, in process_request
+    result = calculate_total(items)
+  File "/app/utils.py", line 23, in calculate_total
+    return sum([item.price for item in items])
+AttributeError: 'NoneType' object has no attribute 'price'
+2025-11-13T10:30:15.012Z INFO Request processed successfully user=jane.smith request_id=req-12348
+2025-11-13T10:30:20.345Z ERROR Database connection failed
+Traceback (most recent call last):
+  File "/app/database.py", line 102, in connect
+    conn = psycopg2.connect(dsn)
+  File "/usr/lib/python3.9/site-packages/psycopg2/__init__.py", line 122, in connect
+    conn = _connect(dsn, connection_factory=connection_factory, **kwasync)
+psycopg2.OperationalError: could not connect to server: Connection refused
+	Is the server running on host "localhost" (127.0.0.1) and accepting
+	TCP/IP connections on port 5432?
+2025-11-13T10:30:25.678Z INFO Recovery attempt initiated request_id=req-12350
+2025-11-13T10:30:30.901Z DEBUG Processing batch job=batch-001 size=1500
+2025-11-13T10:30:35.234Z ERROR Application crash detected
+Exception in thread "main" java.lang.NullPointerException: Cannot invoke method on null object
+	at com.example.Service.process(Service.java:42)
+	at com.example.Application.run(Application.java:15)
+	at com.example.Application.main(Application.java:8)
+2025-11-13T10:30:40.567Z WARNING High memory usage detected memory_mb=3200 threshold_mb=3000
+2025-11-13T10:30:45.890Z ERROR Unhandled exception in worker thread
+Traceback (most recent call last):
+  File "/app/worker.py", line 78, in run
+    self.process_message(msg)
+  File "/app/worker.py", line 112, in process_message
+    data = json.loads(msg.body)
+  File "/usr/lib/python3.9/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib/python3.9/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib/python3.9/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+2025-11-13T10:30:50.123Z INFO System recovered successfully uptime=3600s

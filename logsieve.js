@@ -59,6 +59,86 @@ function stripPrefix(line) {
 }
 
 /**
+ * Check if a line starts a new exception event (even without timestamp)
+ * These patterns indicate standalone exception entries
+ * @param {string} line - Log line text
+ * @returns {boolean} - True if line starts a new exception
+ */
+function isExceptionStart(line) {
+  const trimmed = line.trim();
+  
+  // Java-style: Exception in thread "..." 
+  if (/^Exception in thread/i.test(trimmed)) {
+    return true;
+  }
+  
+  // Generic exception with colon at start of line (not indented)
+  if (!line.startsWith(' ') && !line.startsWith('\t')) {
+    if (/^\S+Error:/.test(trimmed) || /^\S+Exception:/.test(trimmed)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * Check if a line is a continuation line (part of a multi-line event)
+ * Continuation lines are typically:
+ * - Stack trace lines (starting with whitespace + "at", "File", etc.)
+ * - Exception lines (starting with common exception types)
+ * - Lines that don't have a timestamp and start with whitespace
+ * @param {string} line - Log line text
+ * @returns {boolean} - True if line is a continuation line
+ */
+function isContinuationLine(line) {
+  if (!line.trim()) return false;
+  
+  // Check if line has a timestamp (if yes, it's a new event)
+  if (/^\s*\[?\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/.test(line)) {
+    return false;
+  }
+  
+  // Check if this starts a new exception event
+  if (isExceptionStart(line)) {
+    return false;
+  }
+  
+  // Common patterns for continuation lines:
+  // 1. Traceback indicator
+  if (/^Traceback \(most recent call last\):?/i.test(line.trim())) {
+    return true;
+  }
+  
+  // 2. Python stack frame (starts with whitespace + "File")
+  if (/^\s+File .*line \d+/i.test(line)) {
+    return true;
+  }
+  
+  // 3. Python exception types (indented or as part of traceback)
+  if (/^\s+\S+Error:/.test(line) || /^\s+\S+Exception:/.test(line)) {
+    return true;
+  }
+  
+  // 4. Java/JavaScript stack trace (starts with whitespace + "at")
+  if (/^\s+at /.test(line)) {
+    return true;
+  }
+  
+  // 5. Indented continuation (starts with tab or multiple spaces)
+  if (/^[\t ]{2,}/.test(line)) {
+    return true;
+  }
+  
+  // 6. Exception location info (starts with whitespace)
+  if (/^\s+/.test(line) && line.trim().length > 0) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
  * Tokenize string for search purposes
  * @param {string} s - String to tokenize
  * @returns {Array<string>} - Array of tokens
@@ -311,6 +391,7 @@ let fieldNames = new Set();  // Track all extracted field names
 
 /**
  * Parse raw log text into structured log entries
+ * Supports multi-line events (tracebacks, stack traces)
  * @param {string} text - Raw log file content
  * @returns {Array<Object>} - Array of parsed log entries
  */
@@ -318,15 +399,32 @@ function parseLogText(text) {
   const out = [];
   const lines = text.split(/\r?\n/);
   let id = 1;
+  let currentEntry = null;
 
   for (const line of lines) {
     if (!line.trim()) continue;
 
+    // Check if this is a continuation of the previous entry
+    if (currentEntry && isContinuationLine(line)) {
+      // Append to current entry's raw and message
+      currentEntry.raw += '\n' + line;
+      currentEntry.message += '\n' + line;
+      // Update search index
+      currentEntry._lc = (currentEntry.raw + " " + currentEntry.message).toLowerCase();
+      continue;
+    }
+
+    // If we have a current entry, save it before starting a new one
+    if (currentEntry) {
+      out.push(currentEntry);
+    }
+
+    // Start a new entry
     const ts = tryTs(line);
     const level = guessLevel(line);
-    const msg = stripPrefix(line);
+    const msg = stripPrefix(line) || line; // Use full line if no prefix found
 
-    out.push({
+    currentEntry = {
       id: id++,
       ts,
       level,
@@ -334,7 +432,12 @@ function parseLogText(text) {
       raw: line,
       fields: {},
       _lc: (line + " " + msg).toLowerCase() // Lowercase for search
-    });
+    };
+  }
+
+  // Don't forget the last entry
+  if (currentEntry) {
+    out.push(currentEntry);
   }
 
   return out;
