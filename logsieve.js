@@ -44,9 +44,62 @@ function tryTs(line) {
   // ISO-ish yyyy-mm-dd[ T]hh:mm:ss(.sss)?
   const m = line.match(/(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?)/);
   if (!m) return "";
-  const iso = m[1].replace(" ", "T").replace(",", ".");
-  const d = new Date(iso);
+  const raw = m[1];
+  // Normalize fractional seconds separator and replace space with T for readability
+  const iso = raw.replace(" ", "T").replace(",", ".");
+  // Create a Date using numeric components to ensure it's treated as a local timestamp
+  const parts = iso.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?/);
+  let d;
+  if (parts) {
+    const [, y, mo, da, hh, mm, ss, frac] = parts;
+    const ms = frac ? Math.floor(Number('0.' + frac) * 1000) : 0;
+    d = new Date(Number(y), Number(mo) - 1, Number(da), Number(hh), Number(mm), Number(ss), ms);
+  } else {
+    d = new Date(iso);
+  }
   return isNaN(d) ? "" : d.toISOString();
+}
+
+/**
+ * Parse various time string formats and return ISO (UTC) string or empty string.
+ * For naive timestamps (no timezone) this treats them as local timestamps.
+ * @param {string} s
+ * @returns {string}
+ */
+function parseTimestampToISO(s) {
+  if (!s) return '';
+  const str = String(s).trim();
+
+  // If string appears to include an explicit timezone offset or Z, let Date handle it
+  if (/[zZ]$/.test(str) || /[+-]\d{2}:?\d{2}$/.test(str) || /[+-]\d{2}\d{2}$/.test(str)) {
+    const d = new Date(str);
+    return isNaN(d) ? '' : d.toISOString();
+  }
+
+  // ISO-ish or common naive formats: yyyy-mm-dd HH:MM:SS(.sss)
+  const parts = str.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?/);
+  if (parts) {
+    const [, y, mo, da, hh, mm, ss, frac] = parts;
+    const ms = frac ? Math.floor(Number('0.' + frac) * 1000) : 0;
+    const d = new Date(Number(y), Number(mo) - 1, Number(da), Number(hh), Number(mm), Number(ss), ms);
+    return isNaN(d) ? '' : d.toISOString();
+  }
+
+  // Fallback to Date
+  const d = new Date(str);
+  return isNaN(d) ? '' : d.toISOString();
+}
+
+// Format an ISO or raw timestamp string to user's localized datetime with tz
+function formatLocalDatetime(isoOrRaw) {
+  if (!isoOrRaw) return '';
+  // Already an ISO or attempt to parse to ISO (works for Z and naive local)
+  const iso = parseTimestampToISO(isoOrRaw) || String(isoOrRaw);
+  const d = new Date(iso);
+  if (isNaN(d)) return String(isoOrRaw);
+  const opts = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short' };
+  // Remove comma placed by locales and return a consistent format
+  return d.toLocaleString(undefined, opts).replace(',', '');
 }
 
 /**
@@ -388,6 +441,13 @@ let view = [];        // Filtered/sorted view
 let page = 1;         // Current page number
 let per = 50;         // Items per page
 let fieldNames = new Set();  // Track all extracted field names
+let currentFilterConfig = null;
+let builderOpen = true; // make builder primary and visible by default
+// applied* states capture what was last applied with the Apply button
+let appliedFilterConfig = null;
+let appliedAdvancedQuery = null;
+// Detected user's timezone name (IANA). Set at startup for consistent rendering
+const userTimeZone = (Intl && Intl.DateTimeFormat && Intl.DateTimeFormat().resolvedOptions().timeZone) || 'Local';
 
 /**
  * Parse raw log text into structured log entries
@@ -510,8 +570,7 @@ function parseCSV(text) {
 
     // Map standard columns
     if (tsIdx >= 0 && values[tsIdx]) {
-      const d = new Date(values[tsIdx]);
-      row.ts = isNaN(d) ? values[tsIdx] : d.toISOString();
+      row.ts = parseTimestampToISO(values[tsIdx]) || values[tsIdx];
     }
     
     if (levelIdx >= 0 && values[levelIdx]) {
@@ -596,8 +655,7 @@ function parseJSON(text) {
     // Map standard properties
     if (item.ts || item.timestamp || item.time || item.date) {
       const tsVal = item.ts || item.timestamp || item.time || item.date;
-      const d = new Date(tsVal);
-      row.ts = isNaN(d) ? String(tsVal) : d.toISOString();
+      row.ts = parseTimestampToISO(tsVal) || String(tsVal);
     }
 
     if (item.level || item.severity || item.loglevel) {
@@ -652,42 +710,263 @@ function parseJSON(text) {
   return out;
 }
 
+// ---------- Field Registry & Operators (Phase 1) ----------
+
+const OPERATORS = {
+  text: [
+    { value: 'equals', label: 'equals', fn: (a, b) => String(a) === String(b) },
+    { value: 'notEquals', label: 'does not equal', fn: (a, b) => String(a) !== String(b) },
+    { value: 'contains', label: 'contains', fn: (a, b) => String(a).toLowerCase().includes(String(b).toLowerCase()) },
+    { value: 'notContains', label: 'does not contain', fn: (a, b) => !String(a).toLowerCase().includes(String(b).toLowerCase()) },
+    { value: 'startsWith', label: 'starts with', fn: (a, b) => String(a).toLowerCase().startsWith(String(b).toLowerCase()) },
+    { value: 'endsWith', label: 'ends with', fn: (a, b) => String(a).toLowerCase().endsWith(String(b).toLowerCase()) },
+    { value: 'matches', label: 'matches regex', fn: (a, b) => new RegExp(b, 'i').test(a) },
+    { value: 'empty', label: 'is empty', fn: (a) => !a || (Array.isArray(a) && a.length === 0) },
+    { value: 'notEmpty', label: 'is not empty', fn: (a) => !!a && (!Array.isArray(a) || a.length > 0) }
+  ],
+  numeric: [
+    { value: 'equals', label: '=', fn: (a, b) => parseFloat(a) === parseFloat(b) },
+    { value: 'notEquals', label: '≠', fn: (a, b) => parseFloat(a) !== parseFloat(b) },
+    { value: 'greaterThan', label: '>', fn: (a, b) => parseFloat(a) > parseFloat(b) },
+    { value: 'greaterOrEqual', label: '≥', fn: (a, b) => parseFloat(a) >= parseFloat(b) },
+    { value: 'lessThan', label: '<', fn: (a, b) => parseFloat(a) < parseFloat(b) },
+    { value: 'lessOrEqual', label: '≤', fn: (a, b) => parseFloat(a) <= parseFloat(b) }
+  ],
+  date: [
+    { value: 'before', label: 'before', fn: (a, b) => {
+      const aa = parseTimestampToISO(a) || a;
+      const bb = parseTimestampToISO(b) || b;
+      const da = new Date(aa);
+      const db = new Date(bb);
+      if (isNaN(da) || isNaN(db)) return false;
+      return da < db;
+    }},
+    { value: 'after', label: 'after', fn: (a, b) => {
+      const aa = parseTimestampToISO(a) || a;
+      const bb = parseTimestampToISO(b) || b;
+      const da = new Date(aa);
+      const db = new Date(bb);
+      if (isNaN(da) || isNaN(db)) return false;
+      return da > db;
+    }},
+    { value: 'between', label: 'between', fn: (a, b) => {
+      const aa = parseTimestampToISO(a) || a;
+      const date = new Date(aa);
+      const parts = (b || '').split(',');
+      if (parts.length < 2) return false;
+      const start = new Date(parseTimestampToISO(parts[0]) || parts[0]);
+      const end = new Date(parseTimestampToISO(parts[1]) || parts[1]);
+      if (isNaN(date) || isNaN(start) || isNaN(end)) return false;
+      return date >= start && date <= end;
+    }},
+    { value: 'equals', label: 'on', fn: (a,b) => {
+      const aa = parseTimestampToISO(a) || a;
+      const bb = parseTimestampToISO(b) || b;
+      const da = new Date(aa);
+      const db = new Date(bb);
+      if (isNaN(da) || isNaN(db)) return false;
+      return da.toISOString().split('T')[0] === db.toISOString().split('T')[0];
+    }}
+  ],
+  array: [
+    { value: 'contains', label: 'contains', fn: (arr, val) => Array.isArray(arr) && arr.some(v => String(v).toLowerCase().includes(String(val).toLowerCase())) },
+    { value: 'containsAll', label: 'contains all', fn: (arr, val) => {
+      const values = String(val).split(',').map(v => v.trim());
+      return values.every(v => Array.isArray(arr) && arr.some(av => String(av).toLowerCase().includes(v.toLowerCase())));
+    }},
+    { value: 'containsAny', label: 'contains any', fn: (arr, val) => {
+      const values = String(val).split(',').map(v => v.trim());
+      return values.some(v => Array.isArray(arr) && arr.some(av => String(av).toLowerCase().includes(v.toLowerCase())));
+    }},
+    { value: 'empty', label: 'is empty', fn: (arr) => !arr || arr.length === 0 },
+    { value: 'notEmpty', label: 'is not empty', fn: (arr) => !!arr && arr.length > 0 }
+  ]
+};
+
+const FieldRegistry = {
+  fields: new Map(),
+  register(fieldName, samples = []) {
+    const existing = this.fields.get(fieldName) || { name: fieldName, type: 'text', samples: [], uniqueValues: new Set(), isNumeric: false, isDate: false, isArray: false };
+    samples.forEach(sample => {
+      if (sample !== null && sample !== undefined) {
+        existing.samples.push(sample);
+        existing.uniqueValues.add(String(sample));
+      }
+    });
+    if (existing.samples.length > 100) existing.samples = existing.samples.slice(-100);
+    this._detectType(existing);
+    this.fields.set(fieldName, existing);
+  },
+  _detectType(field) {
+    if (field.samples.length === 0) return;
+    field.isArray = field.samples.some(s => Array.isArray(s));
+    if (field.isArray) { field.type = 'array'; return; }
+    const numericSamples = field.samples.filter(s => !isNaN(parseFloat(s)) && isFinite(s));
+    field.isNumeric = numericSamples.length / field.samples.length > 0.8;
+    if (field.isNumeric) { field.type = 'numeric'; return; }
+    const dateSamples = field.samples.filter(s => { const d = new Date(s); return !isNaN(d) && String(s).length >= 8; });
+    field.isDate = dateSamples.length / field.samples.length > 0.8;
+    if (field.isDate) { field.type = 'date'; return; }
+    field.type = 'text';
+  },
+  get(fieldName) { return this.fields.get(fieldName); },
+  getUniqueValues(fieldName, limit = 100) { const f = this.get(fieldName); return !f ? [] : Array.from(f.uniqueValues).slice(0, limit).sort(); },
+  updateFromDataset(rows) {
+    this.fields.clear();
+    this.register('level', rows.map(r => r.level).filter(Boolean));
+    this.register('ts', rows.map(r => r.ts).filter(Boolean));
+    this.register('message', rows.map(r => r.message).filter(Boolean));
+    const fNames = new Set();
+    rows.forEach(row => { if (row.fields) Object.keys(row.fields).forEach(key => fNames.add(key)); });
+    fNames.forEach(fn => {
+      const samples = rows.map(r => r.fields?.[fn]).filter(v => v !== null && v !== undefined).slice(0, 100);
+      this.register(fn, samples);
+    });
+  }
+};
+
+function getOperatorsForField(fieldName, fieldValue) {
+  if (fieldName === 'level') return OPERATORS.text.filter(op => ['equals', 'notEquals'].includes(op.value));
+  if (fieldName === 'ts' || fieldName === 'timestamp') return OPERATORS.date;
+  if (Array.isArray(fieldValue)) return OPERATORS.array;
+  if (!isNaN(parseFloat(fieldValue)) && isFinite(fieldValue)) return OPERATORS.numeric;
+  return OPERATORS.text;
+}
+
+/**
+ * Evaluate a single filter rule against a row
+ */
+function evaluateRule(row, rule) {
+  if (!rule || rule.enabled === false) return true;
+  let fieldValue;
+  if (['level', 'ts', 'message', 'raw', 'id'].includes(rule.field)) fieldValue = row[rule.field];
+  else fieldValue = row.fields?.[rule.field];
+  // Treat empty-string or empty-array as empty for the "empty" operator
+  const isEmpty = fieldValue === undefined || fieldValue === null || (typeof fieldValue === 'string' && fieldValue.trim() === '') || (Array.isArray(fieldValue) && fieldValue.length === 0);
+  if (isEmpty) {
+    if (rule.operator === 'empty') return true;
+    if (rule.operator === 'notEmpty') return false;
+    // For other operators, no value to compare against -> rule does not match
+    return false;
+  }
+
+  // If the rule requires a value but rule.value is empty, do not try expensive comparisons
+  if (rule.value === undefined || rule.value === null || String(rule.value).trim() === '') {
+    if (rule.operator === 'empty') return false; // already handled, but just in case
+    if (rule.operator === 'notEmpty') return true;
+    // No comparison value
+    return false;
+  }
+    
+  const fieldMeta = FieldRegistry.get(rule.field);
+  const fieldType = fieldMeta?.type || (Array.isArray(fieldValue) ? 'array' : 'text');
+  const operators = OPERATORS[fieldType] || OPERATORS.text;
+  const operator = operators.find(op => op.value === rule.operator);
+  if (!operator) { console.warn('Unknown operator', rule.operator); return true; }
+  try { return operator.fn(fieldValue, rule.value); } catch (e) { console.error('Error evaluating rule', rule, e); return false; }
+}
+
+function evaluateRules(row, rules) {
+  if (!rules || rules.length === 0) return true;
+  let result = evaluateRule(row, rules[0]);
+  for (let i = 1; i < rules.length; i++) {
+    const rule = rules[i];
+    const prevLogic = rules[i - 1].logic || 'AND';
+    const ruleResult = evaluateRule(row, rule);
+    if (prevLogic === 'AND') result = result && ruleResult;
+    else if (prevLogic === 'OR') result = result || ruleResult;
+    if (!result && prevLogic === 'AND') {
+      const hasOrAhead = rules.slice(i).some(r => r.logic === 'OR');
+      if (!hasOrAhead) break;
+    }
+  }
+  return result;
+}
+
+function applyFilterConfig(rows, filterConfig) {
+  let filteredRows = rows;
+  if (filterConfig.quickSearch && filterConfig.quickSearch.trim()) {
+    const terms = filterConfig.quickSearch.toLowerCase().split(/\s+/);
+    filteredRows = filteredRows.filter(row => terms.every(t => row._lc.includes(t)));
+  }
+  if (filterConfig.rules && filterConfig.rules.length > 0) {
+    filteredRows = filteredRows.filter(row => evaluateRules(row, filterConfig.rules));
+  }
+  if (filterConfig.groups && filterConfig.groups.length > 0) {
+    filterConfig.groups.forEach(group => {
+      const groupMatches = filteredRows.filter(row => evaluateRules(row, group.rules));
+      if (group.logic === 'OR') {
+        filteredRows = [...new Set([...filteredRows, ...groupMatches])];
+      } else if (group.logic === 'AND') {
+        filteredRows = filteredRows.filter(row => groupMatches.includes(row));
+      }
+    });
+  }
+  return filteredRows;
+}
+
+/**
+ * Migrate v1 filter to v2 format
+ */
+function migrateFilter(oldFilter) {
+  if (!oldFilter) return oldFilter;
+  if (oldFilter.version === 2) return oldFilter;
+  const rules = [];
+  if (oldFilter.level) {
+    rules.push({ id: generateUUID(), field: 'level', operator: 'equals', value: oldFilter.level, logic: 'AND', enabled: true });
+  }
+  if (oldFilter.from) rules.push({ id: generateUUID(), field: 'ts', operator: 'after', value: oldFilter.from, logic: 'AND', enabled: true });
+  if (oldFilter.to) rules.push({ id: generateUUID(), field: 'ts', operator: 'before', value: oldFilter.to, logic: 'AND', enabled: true });
+  if (rules.length > 0) rules[rules.length - 1].logic = null;
+  return { ...oldFilter, version: 2, quickSearch: oldFilter.query || '', rules, sort: { field: oldFilter.sort || 'id', order: oldFilter.order || 'desc' }, _legacy: { query: oldFilter.query, regex: oldFilter.regex } };
+}
+
+function migrateAllFilters() {
+  const filters = Storage.getFilters();
+  let migrated = 0;
+  filters.forEach(filter => { if (!filter.version || filter.version !== 2) { const v2 = migrateFilter(filter); Storage.saveFilter(v2); migrated++; } });
+  if (migrated > 0) console.log(`Migrated ${migrated} filters to v2 format`);
+}
+
+
 /**
  * Apply all active filters to the dataset
  */
-function applyFilters() {
-  const q = $("#q").value.trim().toLowerCase();
-  const lv = $("#level").value;
-  const from = $("#from").value ? new Date($("#from").value).toISOString() : "";
-  const to = $("#to").value ? new Date($("#to").value).toISOString() : "";
-  const regex = $("#regex").value.trim();
 
-  let re = null;
-  if (regex) {
-    try {
-      re = new RegExp(regex);
-    } catch (e) {
-      alert("Invalid regex: " + e.message);
-    }
+function parseAdvancedQuery() {
+  const tq = $("#textQuery");
+  if (!tq) return null;
+  const text = tq.value.trim();
+  if (!text) return null;
+  try {
+    const parser = new QueryParser(text);
+    const rules = parser.parse();
+    // words are treated as quick search tokens
+    const words = parser.tokens.filter(t => t.type === 'WORD').map(t => t.value);
+    return { version: 2, rules, quickSearch: words.join(' ') };
+  } catch (e) {
+    // Malformed advanced query; show an error indicator but don't break filtering
+    $('#queryError').textContent = 'Query parse error: ' + (e.message || e);
+    return null;
   }
+}
+
+function applyFilters() {
+  // Builder rules are stored in currentFilterConfig
 
   let v = rows;
 
-  // Apply filters
-  if (lv) v = v.filter(r => r.level === lv);
-  if (from) v = v.filter(r => !r.ts || r.ts >= from);
-  if (to) v = v.filter(r => !r.ts || r.ts <= to);
-
-  // Text search
-  if (q) {
-    const terms = q.split(/\s+/);
-    v = v.filter(r => terms.every(t => r._lc.includes(t)));
+  // Builder: if configured via builder, apply structured filter on top first
+  if (appliedFilterConfig && (appliedFilterConfig.rules && appliedFilterConfig.rules.length > 0)) {
+    v = applyFilterConfig(v, appliedFilterConfig);
   }
 
-  // Regex filter
-  if (re) {
-    v = v.filter(r => re.test(r.raw));
+  // Advanced: apply only if the user pressed Apply (appliedAdvancedQuery)
+  if (appliedAdvancedQuery) {
+    v = applyFilterConfig(v, appliedAdvancedQuery);
   }
+
+  // legacy date/level filters were removed; prefer builder rules
 
   // Sort results
   const sort = $("#sort").value;
@@ -743,7 +1022,7 @@ function render() {
   const sortedFields = [...fieldNames].sort();
   theadRow.innerHTML = `
     <th style="width:72px">ID</th>
-    <th style="width:210px">Timestamp</th>
+  <th style="width:210px">Timestamp (<span id="tzLabel">${escapeHtml(userTimeZone)}</span>)</th>
     <th style="width:120px">Level</th>
     <th>Message</th>
     ${sortedFields.map(f => `<th style="min-width:150px">${escapeHtml(f)}</th>`).join('')}
@@ -771,7 +1050,7 @@ function render() {
     
     tr.innerHTML = `
       <td>${r.id}</td>
-      <td>${r.ts ? r.ts.replace('T', ' ').replace('Z', '') : ''}</td>
+    <td>${formatLocalDatetime(r.ts) || ''}</td>
       <td><span class="lvl-${r.level}">${r.level || ''}</span></td>
       <td><pre>${escapeHtml(r.message)}</pre><details><summary>raw</summary><pre>${escapeHtml(r.raw)}</pre></details></td>
       ${fieldCells}`;
@@ -794,11 +1073,8 @@ function render() {
  */
 function updateFilterTag() {
   const bits = [];
-  if ($("#q").value.trim()) bits.push('q');
-  if ($("#level").value) bits.push($("#level").value);
-  if ($("#from").value) bits.push('from');
-  if ($("#to").value) bits.push('to');
-  if ($("#regex").value.trim()) bits.push('re');
+  if (currentFilterConfig && currentFilterConfig.rules && currentFilterConfig.rules.length) bits.push('builder');
+  if (appliedAdvancedQuery && appliedAdvancedQuery.rules && appliedAdvancedQuery.rules.length) bits.push('advanced');
   $("#filterTag").textContent = bits.length ? `filters: ${bits.join(',')}` : 'no filters';
 }
 
@@ -934,8 +1210,8 @@ function runSingleExtractor(pattern, scope, mergeStrategy = 'last-wins') {
 
     // Update structured fields if captured (use first match for these)
     if (groupValues.ts && groupValues.ts.length > 0) {
-      const d = new Date(groupValues.ts[0]);
-      if (!isNaN(d)) r.ts = d.toISOString();
+      const iso = parseTimestampToISO(groupValues.ts[0]);
+      if (iso) r.ts = iso;
     }
     if (groupValues.level && groupValues.level.length > 0) {
       r.level = String(groupValues.level[0]).toUpperCase();
@@ -1040,8 +1316,35 @@ function runActiveExtractors() {
   console.log('Extractor results:', results);
 
   $("#extractInfo").textContent = `Applied ${activeExtractors.length} extractor(s) to ${fmt(scope.length)} rows · ${fmt(results.total)} matches`;
+  // Update field registry after new fields were added by extractors
+  FieldRegistry.updateFromDataset(rows);
+
+  renderQueryFields();
   updateSortOptions();
+  renderQueryFields();
   applyFilters();
+}
+
+function renderQueryFields() {
+  const el = $("#queryFields");
+  if (!el) return;
+  const fields = [...fieldNames].sort().slice(0, 20);
+  if (fields.length === 0) {
+    el.innerHTML = '';
+    return;
+  }
+  el.innerHTML = fields.map(f => `<button class="btn ghost" data-field="${escapeHtml(f)}">${escapeHtml(f)}</button>`).join(' ');
+  el.querySelectorAll('button[data-field]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const f = e.currentTarget.dataset.field;
+      const tq = $("#textQuery");
+      if (!tq) return;
+      const insert = `${f}:`;
+      const pos = tq.selectionStart || tq.value.length;
+      tq.value = tq.value.slice(0, pos) + insert + tq.value.slice(pos);
+      tq.focus();
+    });
+  });
 }
 
 /**
@@ -1122,6 +1425,9 @@ async function handleFile(file) {
       $("#info").textContent = `Parsed ${fmt(rows.length)} lines from log file`;
       break;
   }
+
+  // Update field registry metadata for UI and operator suggestions
+  FieldRegistry.updateFromDataset(rows);
 
   applyFilters();
 }
@@ -1294,11 +1600,14 @@ function renderFilterList() {
 
   container.innerHTML = filters.map(filter => {
     const settings = [];
-    if (filter.query) settings.push(`q: ${filter.query}`);
-    if (filter.level) settings.push(`level: ${filter.level}`);
-    if (filter.from) settings.push('has from');
-    if (filter.to) settings.push('has to');
-    if (filter.regex) settings.push('has regex');
+    // Show builder rules count and advanced query if present
+    if (filter.version === 2) {
+      if (filter.rules && filter.rules.length) settings.push(`rules: ${filter.rules.length}`);
+      if (filter.advancedQuery) settings.push(`advanced: ${escapeHtml(filter.advancedQuery)}`);
+      if (filter.quickSearch) settings.push(`quick: ${filter.quickSearch}`);
+    } else {
+      if (filter.query) settings.push(`legacy: ${filter.query}`);
+    }
 
     return `
       <div class="library-item" data-id="${filter.id}">
@@ -1416,25 +1725,13 @@ function openFilterModal() {
   $("#filterName").value = '';
   $("#filterDesc").value = '';
 
-  // Show current filter settings
+  // Show current filter settings (builder + advanced)
   const preview = $("#filterPreview");
   const settings = [];
-  
-  const q = $("#q").value.trim();
-  const level = $("#level").value;
-  const from = $("#from").value;
-  const to = $("#to").value;
-  const regex = $("#regex").value.trim();
-  const sort = $("#sort").value;
-  const order = $("#order").value;
-
-  if (q) settings.push(`Search: "${q}"`);
-  if (level) settings.push(`Level: ${level}`);
-  if (from) settings.push(`From: ${from}`);
-  if (to) settings.push(`To: ${to}`);
-  if (regex) settings.push(`Regex: ${regex}`);
-  settings.push(`Sort: ${sort} (${order})`);
-
+  if (currentFilterConfig && currentFilterConfig.rules && currentFilterConfig.rules.length) settings.push(`rules: ${currentFilterConfig.rules.length}`);
+  const adv = $("#textQuery").value.trim();
+  if (adv) settings.push(`advanced: ${escapeHtml(adv)}`);
+  settings.push(`Sort: ${$("#sort").value} (${$("#order").value})`);
   preview.innerHTML = settings.join('<br>');
 
   modal.classList.add('active');
@@ -1462,11 +1759,9 @@ function saveFilterFromModal() {
   const filter = {
     name,
     description,
-    query: $("#q").value.trim(),
-    level: $("#level").value,
-    from: $("#from").value,
-    to: $("#to").value,
-    regex: $("#regex").value.trim(),
+    version: 2,
+    rules: currentFilterConfig?.rules ? JSON.parse(JSON.stringify(currentFilterConfig.rules)) : [],
+    advancedQuery: $("#textQuery").value.trim(),
     sort: $("#sort").value,
     order: $("#order").value
   };
@@ -1530,17 +1825,338 @@ function handleApplyFilter(e) {
   
   if (!filter) return;
 
-  // Apply filter settings to UI
-  $("#q").value = filter.query || '';
-  $("#level").value = filter.level || '';
-  $("#from").value = filter.from || '';
-  $("#to").value = filter.to || '';
-  $("#regex").value = filter.regex || '';
+  // Apply saved filter settings to UI
+  $("#textQuery").value = filter.advancedQuery || filter.quickSearch || filter.query || '';
+  $("#sort").value = filter.sort || 'id';
+  $("#order").value = filter.order || 'desc';
   $("#sort").value = filter.sort || 'id';
   $("#order").value = filter.order || 'desc';
 
+  // If this is a v2 filter, set as current structured filter
+  if (filter.version === 2) {
+    // Set the structured builder rules
+    currentFilterConfig = { version: 2, rules: JSON.parse(JSON.stringify(filter.rules || [])), quickSearch: filter.quickSearch || '' };
+    appliedFilterConfig = JSON.parse(JSON.stringify(currentFilterConfig));
+    // Open the builder UI when applying a saved v2 filter so builder rules are visible
+  const b = $("#filterBuilder");
+    if (b) {
+      b.style.display = 'block';
+      builderOpen = true;
+    }
+    renderBuilderUI();
+  } else {
+    currentFilterConfig = null;
+  }
+
   // Trigger filter application
+  // Also set applied advanced query from saved filter
+  if (filter.advancedQuery) {
+    try {
+      const parser = new QueryParser(filter.advancedQuery);
+      const rules = parser.parse();
+      appliedAdvancedQuery = QueryParser.compileToFilter(rules);
+    } catch (err) {
+      appliedAdvancedQuery = null;
+    }
+  } else {
+    appliedAdvancedQuery = null;
+  }
   applyFilters();
+}
+
+/**
+ * --- Query Builder: functions ---
+ */
+function createEmptyRule() {
+  return { id: generateUUID(), field: 'level', operator: 'equals', value: '', logic: 'AND', enabled: true };
+}
+
+function addRule(rule = null) {
+  currentFilterConfig = currentFilterConfig || { version: 2, rules: [], quickSearch: '' };
+  const r = rule || createEmptyRule();
+  // If there are existing rules, default logic from previous one remains; ensure last rule logic is null
+  if (currentFilterConfig.rules.length > 0) {
+    currentFilterConfig.rules[currentFilterConfig.rules.length - 1].logic = 'AND';
+  }
+  currentFilterConfig.rules.push(r);
+  currentFilterConfig.rules[currentFilterConfig.rules.length - 1].logic = null;
+  // do not apply; wait for user to press Apply
+}
+
+function deleteRule(id) {
+  currentFilterConfig = currentFilterConfig || { version: 2, rules: [], quickSearch: '' };
+  currentFilterConfig.rules = currentFilterConfig.rules.filter(r => r.id !== id);
+  // Ensure logic on last rule is null
+  if (currentFilterConfig.rules.length > 0) currentFilterConfig.rules[currentFilterConfig.rules.length - 1].logic = null;
+  renderBuilderUI();
+  // do not auto-apply
+}
+
+function updateRuleField(id, fieldName) {
+  const r = (currentFilterConfig?.rules || []).find(rr => rr.id === id);
+  if (!r) return;
+  r.field = fieldName;
+  // pick default operator for the field
+  const sample = FieldRegistry.get(fieldName)?.samples?.[0];
+  const ops = getOperatorsForField(fieldName, sample);
+  r.operator = ops?.[0]?.value || 'equals';
+  r.value = '';
+  renderBuilderUI();
+  // do not auto-apply
+}
+
+function updateRuleOperator(id, operator) {
+  const r = (currentFilterConfig?.rules || []).find(rr => rr.id === id);
+  if (!r) return;
+  r.operator = operator;
+  renderBuilderUI();
+  // do not auto-apply
+}
+
+function updateRuleValue(id, value) {
+  const r = (currentFilterConfig?.rules || []).find(rr => rr.id === id);
+  if (!r) return;
+  r.value = value;
+  // do not auto-apply; preview updated by renderBuilderUI
+}
+
+function updateRuleLogic(id, logic) {
+  const idx = (currentFilterConfig?.rules || []).findIndex(rr => rr.id === id);
+  if (idx < 0) return;
+  currentFilterConfig.rules[idx].logic = logic;
+  renderBuilderUI();
+  // do not auto-apply
+}
+
+function rulesToQuery(rules) {
+  if (!rules || rules.length === 0) return '';
+  const parts = rules.map(rule => {
+    let prefix = '';
+    if (['greaterThan','greaterOrEqual','lessThan','lessOrEqual','notEquals'].includes(rule.operator)) {
+      const opMap = { 'greaterThan': '>', 'greaterOrEqual': '>=', 'lessThan': '<', 'lessOrEqual': '<=', 'notEquals': '!=' };
+      prefix = opMap[rule.operator];
+    } else if (rule.operator === 'startsWith') {
+      prefix = '^';
+    } else if (rule.operator === 'endsWith') {
+      // We'll append suffix on value
+      // keep prefix empty
+    }
+    let val = String(rule.value || '');
+    if (rule.operator === 'endsWith') val = val + '$';
+    // Quote if contains spaces
+    if (val.includes(' ')) val = '"' + val + '"';
+    return `${rule.field}:${prefix}${val}${rule.logic ? ' ' + rule.logic + ' ' : ''}`;
+  }).join('');
+  return parts;
+}
+
+/**
+ * Query Parser - tokenizes and parses text queries into v2 filter rules
+ * Supports simple field:value tokens, comparison operators, quoted strings,
+ * AND/OR logic, and minimal prefix operators (^ for startsWith, $ for endsWith)
+ */
+class QueryParser {
+  constructor(queryString) {
+    this.query = queryString || '';
+    this.pos = 0;
+    this.tokens = [];
+  }
+
+  tokenize() {
+    const patterns = [
+      { type: 'FIELD_OP', regex: /(\w+):(>=|<=|!=|>|<|=)("[^"]*"|[^\s)]+)/y },
+      { type: 'FIELD', regex: /(\w+):("[^"]*"|[^\s)]+)/y },
+      { type: 'STRING', regex: /"([^"]*)"/y },
+      { type: 'AND', regex: /\bAND\b/iy },
+      { type: 'OR', regex: /\bOR\b/iy },
+      { type: 'NOT', regex: /\bNOT\b/iy },
+      { type: 'LPAREN', regex: /\(/y },
+      { type: 'RPAREN', regex: /\)/y },
+      { type: 'WORD', regex: /[^\s()]+/y }
+    ];
+
+    const s = this.query;
+    let i = 0;
+    while (i < s.length) {
+      if (/\s/.test(s[i])) { i++; continue; }
+      let matched = false;
+      for (const p of patterns) {
+        p.regex.lastIndex = i;
+        const m = p.regex.exec(s);
+        if (m) {
+          matched = true;
+          const token = { type: p.type, raw: m[0] };
+          if (p.type === 'FIELD_OP') {
+            token.field = m[1];
+            token.operator = this._mapOperator(m[2]);
+            token.value = m[3].replace(/^"|"$/g, '');
+          } else if (p.type === 'FIELD') {
+            token.field = m[1];
+            token.operator = 'contains';
+            token.value = m[2].replace(/^"|"$/g, '');
+            if (token.value.startsWith('^')) { token.operator = 'startsWith'; token.value = token.value.slice(1); }
+            if (token.value.endsWith('$')) { token.operator = 'endsWith'; token.value = token.value.slice(0, -1); }
+          } else if (p.type === 'WORD') {
+            token.value = m[0];
+          } else if (p.type === 'STRING') {
+            token.value = m[1];
+          }
+
+          this.tokens.push(token);
+          i = p.regex.lastIndex;
+          break;
+        }
+      }
+      if (!matched) {
+        // Unknown character, skip
+        i++;
+      }
+    }
+
+    return this.tokens;
+  }
+
+  _mapOperator(op) {
+    const map = { '=': 'equals', '!=': 'notEquals', '>': 'greaterThan', '>=': 'greaterOrEqual', '<': 'lessThan', '<=': 'lessOrEqual' };
+    return map[op] || 'equals';
+  }
+
+  parse() {
+    this.tokenize();
+    const rules = [];
+    let currentLogic = null;
+
+    for (const token of this.tokens) {
+      if (token.type === 'FIELD' || token.type === 'FIELD_OP') {
+        rules.push({ id: generateUUID(), field: token.field, operator: token.operator, value: token.value, logic: currentLogic, enabled: true });
+        currentLogic = null;
+      } else if (token.type === 'AND') {
+        currentLogic = 'AND';
+      } else if (token.type === 'OR') {
+        currentLogic = 'OR';
+      } else if (token.type === 'WORD') {
+        // Treat plain word as quickSearch token - we'll handle externally
+      }
+    }
+
+    if (rules.length > 0) rules[rules.length - 1].logic = null;
+    return rules;
+  }
+
+  static compileToFilter(rules) {
+    return { version: 2, rules: rules, quickSearch: '' };
+  }
+}
+
+function renderBuilderUI() {
+  const cont = $("#rulesContainer");
+  if (!cont) return;
+
+  if (!currentFilterConfig) currentFilterConfig = { version: 2, rules: [], quickSearch: '' };
+
+  if (!Array.isArray(currentFilterConfig.rules) || currentFilterConfig.rules.length === 0) {
+    cont.innerHTML = '<div class="empty-state">No filter rules. Click + Add Filter Rule to get started.</div>';
+    $("#builderPreview").textContent = '';
+    return;
+  }
+
+  // Build HTML for rules
+  const allFields = [...fieldNames].sort();
+  const html = currentFilterConfig.rules.map((rule, idx) => {
+    const ops = getOperatorsForField(rule.field, FieldRegistry.get(rule.field)?.samples?.[0] || '');
+    return `
+      <div class="filter-rule" data-rule-id="${rule.id}">
+        <select class="field-select" data-rule-id="${rule.id}">` +
+        ` <optgroup label="Standard Fields">` +
+        ` <option value="level" ${rule.field === 'level'? 'selected':''}>Level</option>` +
+        ` <option value="ts" ${rule.field === 'ts'? 'selected':''}>Timestamp</option>` +
+        ` <option value="message" ${rule.field === 'message'? 'selected':''}>Message</option>` +
+        ` <option value="raw" ${rule.field === 'raw'? 'selected':''}>Raw</option>` +
+        ` </optgroup>` +
+        (allFields.length ? ` <optgroup label="Extracted Fields">` + allFields.map(f => ` <option value="${escapeHtml(f)}" ${rule.field === f? 'selected':''}>${escapeHtml(f)}</option>`).join('') + ` </optgroup>` : '') +
+        `</select>
+        <select class="operator-select" data-rule-id="${rule.id}">` +
+          ops.map(op => `<option value="${op.value}" ${rule.operator === op.value ? 'selected' : ''}>${escapeHtml(op.label)}</option>`).join('') +
+        `</select>
+        ${ (() => {
+            const meta = FieldRegistry.get(rule.field);
+            const isDate = meta?.type === 'date' || rule.field === 'ts';
+            if (rule.operator === 'between' && isDate) {
+              const parts = (rule.value || '').split(',');
+              const start = parts[0] ? new Date(parts[0]).toISOString().slice(0,16) : '';
+              const end = parts[1] ? new Date(parts[1]).toISOString().slice(0,16) : '';
+              return `
+                <input type="datetime-local" class="value-input" data-rule-id="${rule.id}" data-sub="start" value="${escapeHtml(start)}" />
+                <span style="padding:0 8px; color:var(--muted);">to</span>
+                <input type="datetime-local" class="value-input" data-rule-id="${rule.id}" data-sub="end" value="${escapeHtml(end)}" />
+              `;
+            }
+            if (isDate) {
+              return `<input type="datetime-local" class="value-input" data-rule-id="${rule.id}" value="${escapeHtml(rule.value ? (new Date(rule.value).toISOString().slice(0,16)) : '')}" placeholder="Enter date/time" />`;
+            }
+            return `<input class="value-input" data-rule-id="${rule.id}" value="${escapeHtml(rule.value || '')}" placeholder="Enter value..." list="values-${rule.id}" />`;
+          })()
+        }
+        <datalist id="values-${rule.id}">
+          ${FieldRegistry.getUniqueValues(rule.field, 50).map(val => `<option value="${escapeHtml(val)}">`).join('')}
+        </datalist>
+        <button class="delete-rule" data-rule-id="${rule.id}">×</button>
+      </div>
+      ${ (idx !== currentFilterConfig.rules.length - 1) ? `
+        <div class="logic-selector">
+          <label><input type="radio" name="logic-${rule.id}" value="AND" ${rule.logic === 'AND' ? 'checked' : ''} data-rule-id="${rule.id}" class="logic-input"> AND</label>
+          <label><input type="radio" name="logic-${rule.id}" value="OR" ${rule.logic === 'OR' ? 'checked' : ''} data-rule-id="${rule.id}" class="logic-input"> OR</label>
+        </div>
+      ` : '' }
+    `;
+  }).join('');
+
+  cont.innerHTML = html;
+
+  // Attach listeners
+  cont.querySelectorAll('.field-select').forEach(sel => {
+    sel.addEventListener('change', (e) => updateRuleField(e.target.dataset.ruleId, e.target.value));
+  });
+  cont.querySelectorAll('.operator-select').forEach(sel => {
+    sel.addEventListener('change', (e) => updateRuleOperator(e.target.dataset.ruleId, e.target.value));
+  });
+  cont.querySelectorAll('.value-input').forEach(inp => {
+    inp.addEventListener('input', (e) => {
+      const id = e.target.dataset.ruleId;
+      const sub = e.target.dataset.sub; // for between start/end
+      const val = e.target.value;
+
+      if (sub) {
+        // pair input - find both values and combine as CSV of ISO strings
+        const startEl = cont.querySelector(`.value-input[data-rule-id="${id}"][data-sub="start"]`);
+        const endEl = cont.querySelector(`.value-input[data-rule-id="${id}"][data-sub="end"]`);
+        const startVal = startEl?.value ? new Date(startEl.value).toISOString() : '';
+        const endVal = endEl?.value ? new Date(endEl.value).toISOString() : '';
+        const combined = [startVal, endVal].filter(Boolean).join(',');
+        updateRuleValue(id, combined);
+        return;
+      }
+
+      if (e.target.type === 'datetime-local') {
+        if (!val) updateRuleValue(id, '');
+        else updateRuleValue(id, new Date(val).toISOString());
+      } else {
+        updateRuleValue(id, val);
+      }
+    });
+  });
+  cont.querySelectorAll('.delete-rule').forEach(btn => {
+    btn.addEventListener('click', (e) => { deleteRule(e.target.dataset.ruleId); });
+  });
+  cont.querySelectorAll('.logic-input').forEach(inp => {
+    inp.addEventListener('change', (e) => updateRuleLogic(e.target.dataset.ruleId, e.target.value));
+  });
+
+  // Update preview (show generated query only; remove 'Generated:' prefix per request)
+  const preview = rulesToQuery(currentFilterConfig.rules);
+  $("#builderPreview").textContent = preview ? preview : '';
+
+  // Keep advanced query separate — do not update textQuery from builder
 }
 
 /**
@@ -1575,7 +2191,7 @@ function updateFilterLibInfo() {
 }
 
 /**
- * Initialize collapsible sections
+ * Initialize collapsible sections (legacy - kept for backwards compatibility)
  */
 function initializeCollapsibles() {
   document.querySelectorAll('.collapsible-header').forEach(header => {
@@ -1589,6 +2205,142 @@ function initializeCollapsibles() {
   });
 }
 
+// ---------- Sidebar & Accordion Navigation ----------
+
+/**
+ * Navigate to a specific section
+ * @param {string} sectionId - ID of section to navigate to
+ */
+function navigateToSection(sectionId) {
+  // Get all sections except always-visible ones
+  const sections = document.querySelectorAll('.section-card:not(.always-visible)');
+  const targetSection = document.getElementById(`section-${sectionId}`);
+  
+  if (!targetSection) return;
+  
+  // Collapse all sections except the target
+  sections.forEach(section => {
+    if (section.id === `section-${sectionId}`) {
+      section.classList.add('active');
+    } else {
+      section.classList.remove('active');
+    }
+  });
+  
+  // Update nav links
+  const navLinks = document.querySelectorAll('.nav-link');
+  navLinks.forEach(link => {
+    if (link.dataset.section === sectionId) {
+      link.classList.add('active');
+    } else {
+      link.classList.remove('active');
+    }
+  });
+  
+  // Scroll to section
+  targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  
+  // Close mobile sidebar if open
+  closeMobileSidebar();
+}
+
+/**
+ * Toggle accordion section
+ * @param {HTMLElement} header - Section header element
+ */
+function toggleSection(header) {
+  const section = header.closest('.section-card');
+  
+  // Don't toggle always-visible sections
+  if (section.classList.contains('always-visible')) {
+    return;
+  }
+  
+  const sectionId = section.dataset.section;
+  
+  if (section.classList.contains('active')) {
+    // Collapse current section
+    section.classList.remove('active');
+  } else {
+    // Navigate to this section (will collapse others)
+    navigateToSection(sectionId);
+  }
+}
+
+/**
+ * Initialize sidebar navigation
+ */
+function initializeSidebar() {
+  // Handle nav link clicks
+  document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      const sectionId = link.dataset.section;
+      navigateToSection(sectionId);
+    });
+  });
+  
+  // Handle section header clicks
+  document.querySelectorAll('.section-header').forEach(header => {
+    header.addEventListener('click', () => {
+      toggleSection(header);
+    });
+  });
+  
+  // Hamburger menu toggle
+  const hamburger = $('#hamburgerMenu');
+  if (hamburger) {
+    hamburger.addEventListener('click', toggleMobileSidebar);
+  }
+  
+  // Close sidebar when clicking overlay
+  document.addEventListener('click', (e) => {
+    if (document.body.classList.contains('sidebar-open')) {
+      const sidebar = $('#sidebar');
+      const hamburger = $('#hamburgerMenu');
+      if (!sidebar.contains(e.target) && !hamburger.contains(e.target)) {
+        closeMobileSidebar();
+      }
+    }
+  });
+  
+  // Set initial state - default to upload section if no section is already active
+  const hasActiveSection = document.querySelector('.section-card.active');
+  if (!hasActiveSection) {
+    const uploadSection = document.getElementById('section-upload');
+    if (uploadSection) {
+      uploadSection.classList.add('active');
+      // Update nav link to match
+      const uploadNavLink = document.querySelector('.nav-link[data-section="upload"]');
+      if (uploadNavLink) {
+        uploadNavLink.classList.add('active');
+      }
+    }
+  }
+}
+
+/**
+ * Toggle mobile sidebar visibility
+ */
+function toggleMobileSidebar() {
+  const sidebar = $('#sidebar');
+  const body = document.body;
+  
+  sidebar.classList.toggle('open');
+  body.classList.toggle('sidebar-open');
+}
+
+/**
+ * Close mobile sidebar
+ */
+function closeMobileSidebar() {
+  const sidebar = $('#sidebar');
+  const body = document.body;
+  
+  sidebar.classList.remove('open');
+  body.classList.remove('sidebar-open');
+}
+
 // ---------- Event Handlers ----------
 
 /**
@@ -1596,19 +2348,87 @@ function initializeCollapsibles() {
  */
 function initializeEventHandlers() {
   // Filter controls
-  ["q", "level", "from", "to", "regex", "sort", "order", "per"].forEach(id =>
+  ["sort", "order", "per"].forEach(id =>
     $("#" + id).addEventListener('change', applyFilters)
   );
+
+  // Also ensure changing filter inputs will cancel any active v2 structured filter (unless builder is open)
+  ["sort", "order", "per"].forEach(id => {
+    const el = $("#" + id);
+    if (!el) return;
+    el.addEventListener('input', () => { if (!builderOpen) currentFilterConfig = null; });
+  });
 
   // Action buttons
   $("#apply").addEventListener('click', e => {
     e.preventDefault();
+    // Apply: copy current builder rules to appliedFilterConfig
+    appliedFilterConfig = currentFilterConfig ? JSON.parse(JSON.stringify(currentFilterConfig)) : null;
+    // Parse advanced query and set appliedAdvancedQuery, but don't auto-copy into builder
+    const adv = parseAdvancedQuery();
+    if (adv) {
+      appliedAdvancedQuery = adv;
+      $('#queryError').textContent = '';
+    } else {
+      appliedAdvancedQuery = null;
+    }
     applyFilters();
   });
 
+  // Builder always visible (no toggle)
+
+  // Builder buttons
+  $("#addFilterRule").addEventListener('click', () => {
+    addRule();
+    renderBuilderUI();
+    // Do not auto-apply builder changes; require Apply
+  });
+
+  $("#clearFilterRules").addEventListener('click', () => {
+    currentFilterConfig = currentFilterConfig || { version: 2, rules: [], quickSearch: '' };
+    currentFilterConfig.rules = [];
+    renderBuilderUI();
+    // Clearing builder does not auto-apply unless user presses Apply
+  });
+
+  // Builder is always visible and primary
+  const b = $("#filterBuilder");
+  if (b) {
+    b.style.display = 'block';
+    builderOpen = true;
+    renderBuilderUI();
+  }
+
+  // Text Query input parsing (two-way sync)
+  const textQueryInput = $("#textQuery");
+  if (textQueryInput) {
+    let parseTimer = null;
+    textQueryInput.addEventListener('input', (e) => {
+        // Validate query client-side but do not apply until user clicks Apply
+        const v = e.target.value;
+        clearTimeout(parseTimer);
+        parseTimer = setTimeout(() => {
+          try {
+            const parser = new QueryParser(v);
+            parser.parse();
+            $('#queryError').textContent = '';
+          } catch (err) {
+            $('#queryError').textContent = 'Query parse error: ' + (err.message || err);
+          }
+        }, 200);
+      });
+    
+    // Clickable field name suggestions
+    renderQueryFields();
+  }
+
   $("#clear").addEventListener('click', e => {
     e.preventDefault();
-    ["q", "level", "from", "to", "regex"].forEach(id => $("#" + id).value = '');
+    // Clear advanced query and builder; remove applied filter state as well
+    $("#textQuery").value = '';
+    currentFilterConfig = null;
+    appliedFilterConfig = null;
+    appliedAdvancedQuery = null;
     applyFilters();
   });
 
@@ -1736,13 +2556,18 @@ function initializeEventHandlers() {
   // Clean up active extractors on load (remove deleted/invalid IDs)
   const activeIds = Storage.getActiveExtractors();
   Storage.setActiveExtractors(activeIds); // This will dedupe and validate
-  
+  // Migrate any old v1 filters to v2 format on startup
+  migrateAllFilters();
   renderExtractorList();
   renderFilterList();
   updateExtractorInfo();
   updateFilterLibInfo();
+  // Set timezone label and info
+  const info = $('#tzInfo');
+  if (info) info.textContent = `Timestamps are displayed in your local timezone (${userTimeZone}). Naive timestamps are treated as local; UTC/Zulu timestamps are converted to your timezone.`;
   initializeCollapsibles();
   initializeSettings();
+  initializeSidebar();
 }
 
 // ---------- Settings ----------

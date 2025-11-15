@@ -9,6 +9,9 @@
 <body>
   <header>
     <div class="header-top">
+      <button class="btn hamburger-menu" id="hamburgerMenu" title="Toggle menu">
+        <span class="hamburger-icon">☰</span>
+      </button>
       <h1>LogSieve · single‑file</h1>
       <button class="btn theme-toggle" id="themeToggle" title="Toggle theme">
         <span class="theme-icon">🌙</span>
@@ -29,209 +32,356 @@
     </div>
   </header>
 
-  <main class="grid">
-    <section class="card" style="grid-column:1/-1">
-      <h2>Upload</h2>
-      <div class="pad">
-        <div id="drop" class="drop">
-          Drag & drop a .log/.txt file here, or <button class="btn" id="pick">Browse…</button>
-          <input type="file" id="file" accept=".log,.txt,.json,.ndjson" hidden />
-        </div>
-      </div>
-    </section>
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar">
+      <nav class="sidebar-nav">
+        <a href="#section-help" class="nav-link" data-section="help">
+          <span class="nav-icon">❓</span>
+          <span class="nav-text">Help</span>
+        </a>
+        <a href="#section-upload" class="nav-link active" data-section="upload">
+          <span class="nav-icon">📁</span>
+          <span class="nav-text">Upload</span>
+        </a>
+        <a href="#section-filters" class="nav-link" data-section="filters">
+          <span class="nav-icon">🔍</span>
+          <span class="nav-text">Filters & Sort</span>
+        </a>
+        <a href="#section-extractors" class="nav-link" data-section="extractors">
+          <span class="nav-icon">📚</span>
+          <span class="nav-text">Extractor Library</span>
+        </a>
+        <a href="#section-saved-filters" class="nav-link" data-section="saved-filters">
+          <span class="nav-icon">🔖</span>
+          <span class="nav-text">Saved Filters</span>
+        </a>
+        <a href="#section-summary" class="nav-link" data-section="summary">
+          <span class="nav-icon">📊</span>
+          <span class="nav-text">Summary</span>
+        </a>
+        <a href="#section-results" class="nav-link" data-section="results">
+          <span class="nav-icon">📋</span>
+          <span class="nav-text">Results</span>
+        </a>
+      </nav>
+    </aside>
 
-    <section class="card" style="grid-column:1/-1">
-      <h2 class="collapsible-header collapsed">
-        <span class="collapse-icon">▼</span> 💡 New Features Guide
-      </h2>
-      <div class="pad collapsible-content collapsed">
-        <div style="font-size:13px; line-height:1.6; color:var(--muted)">
-          <p><strong>📚 Extractor Library:</strong> Save and reuse regex patterns with named groups. Check the boxes to activate extractors, then click "▶ Run Active" to apply them. Great for parsing structured log formats like Apache, Nginx, or custom application logs.</p>
-          
-          <p><strong>🔖 Saved Filters:</strong> Save your frequently-used filter combinations for quick access. Click "💾 Save Current Filter" after setting up your desired filters (search text, level, date range, etc.).</p>
-          
-          <p><strong>💾 Import/Export Library:</strong> Use the header buttons to backup your extractors and filters, or share them with team members. The export includes all your saved patterns and presets.</p>
-          
-          <p><strong>💡 Tips:</strong></p>
-          <ul style="margin:8px 0; padding-left:20px">
-            <li>Use named groups in regex like <code>(?&lt;user&gt;\w+)</code> to extract structured data</li>
-            <li>Multiple extractors run in order - use the Merge Strategy dropdown in Extractor Library to control how overlapping fields are handled</li>
-            <li>All data stays in your browser - extractors and filters are saved in localStorage</li>
-            <li>Press ESC to close modals quickly</li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <section class="card"  style="grid-column:1/-1">
-      <h2>Filters & Sort</h2>
-      <div class="pad">
-        <div class="controls">
-          <label class="wide"> Search (text/FTS-ish)
-            <input type="search" id="q" placeholder="timeout OR user=alice OR 500" />
-          </label>
-          <label> Level
-            <select id="level">
-              <option value="">Any</option>
-              <option>DEBUG</option>
-              <option>INFO</option>
-              <option>WARNING</option>
-              <option>ERROR</option>
-              <option>CRITICAL</option>
-            </select>
-          </label>
-          <label> From
-            <input type="datetime-local" id="from" />
-          </label>
-          <label> To
-            <input type="datetime-local" id="to" />
-          </label>
-          <label class="wide"> Regex (Python/JS style)
-            <input type="text" id="regex" placeholder="e.g. user=(?<user>\w+)" />
-          </label>
-          <label> Sort
-            <select id="sort">
-              <option value="id">ID</option>
-              <option value="ts">Timestamp</option>
-              <option value="level">Level</option>
-            </select>
-          </label>
-          <label> Order
-            <select id="order">
-              <option value="desc">Desc</option>
-              <option value="asc">Asc</option>
-            </select>
-          </label>
-          <label> Page size
-            <select id="per">
-              <option>25</option>
-              <option selected>50</option>
-              <option>100</option>
-              <option>200</option>
-            </select>
-          </label>
-        </div>
-        <div class="flex" style="margin-top:10px">
-          <button class="btn" id="apply">Apply</button>
-          <button class="btn ghost" id="clear">Clear filters</button>
-          <span class="right pill" id="info">—</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="card" style="grid-column:1/-1">
-      <h2 class="collapsible-header">
-        <span class="collapse-icon">▼</span> Extractor Library
-      </h2>
-      <div class="pad collapsible-content">
-        <div class="flex" style="margin-bottom:10px">
-          <button class="btn" id="addExtractor" title="Create a new regex extractor">+ New Extractor</button>
-          <button class="btn ghost" id="runActiveExtractors" title="Apply all checked extractors">▶ Run Active</button>
-          <label style="margin-left:10px"> Apply to
-            <select id="extractScope" title="Choose whether to apply extractors to all rows or only filtered rows">
-              <option value="all">All rows</option>
-              <option value="filtered">Filtered rows</option>
-            </select>
-          </label>
-          <span class="right pill" id="extractInfo">—</span>
-        </div>
-        
-        <div class="controls" style="margin-bottom:10px">
-          <label> Merge Strategy
-            <select id="mergeStrategy" title="How to handle when multiple extractors capture the same field">
-              <option value="last-wins">Last Wins - Later extractors override earlier ones</option>
-              <option value="first-wins">First Wins - Keep first captured value, skip later ones</option>
-              <option value="merge">Merge - Combine all values (same as last-wins)</option>
-            </select>
-          </label>
-          <div style="font-size:0.85em; color:var(--muted); margin-top:5px; line-height:1.4">
-            When multiple active extractors capture the same field name, this setting determines which value is kept.
+    <main class="main-content">
+      <!-- Help Section -->
+      <section class="section-card" id="section-help" data-section="help">
+        <h2 class="section-header">
+          <span class="section-icon">❓</span>
+          <span>Help</span>
+        </h2>
+        <div class="section-content">
+          <div class="pad">
+            <div style="font-size:13px; line-height:1.6; color:var(--muted)">
+              <h3 style="margin-top:0; font-size:15px; color:var(--ink)">Getting Started</h3>
+              <p>LogSieve is a powerful log analysis tool that runs entirely in your browser. Use the sidebar to navigate between sections, and click section headers to expand/collapse them. The Results section is always visible so you can see your data while working.</p>
+              
+              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">📁 Upload</h3>
+              <p>Load your log files to start analyzing. LogSieve supports multiple formats:</p>
+              <ul style="margin:8px 0; padding-left:20px">
+                <li><strong>Plain text logs (.log, .txt)</strong> - Automatically detects timestamps, log levels, and multi-line events like stack traces</li>
+                <li><strong>JSON files (.json)</strong> - Parses structured JSON data with automatic field mapping</li>
+                <li><strong>NDJSON files (.ndjson)</strong> - Newline-delimited JSON for streaming logs</li>
+                <li><strong>CSV files (.csv)</strong> - Imports tabular data with header row detection</li>
+              </ul>
+              <p><strong>How to use:</strong> Drag and drop your file onto the upload area, or click "Browse..." to select a file. All processing happens in your browser - no data is uploaded to any server.</p>
+              
+              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">🔍 Filters & Sort</h3>
+              <p>Narrow down your logs to find exactly what you need:</p>
+              <ul style="margin:8px 0; padding-left:20px">
+                <li><strong>Search</strong> - Free text search across all log content. Use multiple terms (space-separated) for AND logic</li>
+                <li><strong>Level</strong> - Filter by log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)</li>
+                <li><strong>Date Range</strong> - Set "From" and "To" timestamps to filter time windows</li>
+                <li><strong>Regex</strong> - Use regular expressions for advanced pattern matching</li>
+                <li><strong>Sort</strong> - Order results by ID, timestamp, level, or any extracted field</li>
+                <li><strong>Page Size</strong> - Control how many results appear per page (25-200)</li>
+              </ul>
+              <p><strong>Tip:</strong> Click "Apply" after changing filters, or "Clear filters" to reset everything.</p>
+              
+              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">📚 Extractor Library</h3>
+              <p>Extract structured data from unstructured logs using regular expressions with named groups:</p>
+              <ul style="margin:8px 0; padding-left:20px">
+                <li><strong>Create Extractors</strong> - Click "+ New Extractor" to define a regex pattern with named groups like <code>(?&lt;user&gt;\w+)</code></li>
+                <li><strong>Activate Extractors</strong> - Check the boxes next to extractors you want to use, then click "▶ Run Active"</li>
+                <li><strong>Apply Scope</strong> - Choose whether to apply extractors to "All rows" or only "Filtered rows"</li>
+                <li><strong>Merge Strategy</strong> - Control how overlapping field names are handled when multiple extractors match:
+                  <ul style="margin:4px 0; padding-left:20px">
+                    <li><em>Last Wins</em> - Later extractors override earlier ones</li>
+                    <li><em>First Wins</em> - Keep first captured value</li>
+                    <li><em>Merge</em> - Combine values (currently same as last-wins)</li>
+                  </ul>
+                </li>
+                <li><strong>Quick Test</strong> - Use the collapsible "Quick Test" section to try a pattern once without saving</li>
+              </ul>
+              <p><strong>Tip:</strong> Extracted fields become sortable columns in the Results table and export cleanly to CSV/JSON.</p>
+              
+              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">🔖 Saved Filters</h3>
+              <p>Save and reuse filter combinations for common queries:</p>
+              <ul style="margin:8px 0; padding-left:20px">
+                <li><strong>Save Current Filter</strong> - After setting up filters in the Filters & Sort section, click "💾 Save Current Filter"</li>
+                <li><strong>Apply Saved Filter</strong> - Click the "Apply" button next to any saved filter to instantly load those settings</li>
+                <li><strong>Manage Filters</strong> - Edit names/descriptions or delete filters you no longer need</li>
+              </ul>
+              <p><strong>Tip:</strong> Filter presets capture all settings including search text, level, date range, regex, and sort order.</p>
+              
+              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">📊 Summary</h3>
+              <p>Get a quick overview of your log data:</p>
+              <ul style="margin:8px 0; padding-left:20px">
+                <li><strong>Statistics</strong> - See total row count and breakdown by log level (INFO, WARN, ERROR)</li>
+                <li><strong>File Info</strong> - View the filename, total line count, and active filters</li>
+                <li><strong>Timeline Sparkline</strong> - Visual chart showing log activity over time (grouped by minute)</li>
+              </ul>
+              <p><strong>Note:</strong> Statistics update automatically whenever you apply filters or load new data.</p>
+              
+              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">📋 Results</h3>
+              <p>View and interact with your filtered log data:</p>
+              <ul style="margin:8px 0; padding-left:20px">
+                <li><strong>Table View</strong> - Displays ID, Timestamp, Level, Message, and any extracted fields as columns</li>
+                <li><strong>Pagination</strong> - Navigate through results using ⏮ ◀ ▶ ⏭ buttons or see current page info</li>
+                <li><strong>Raw Data</strong> - Click "raw" details toggle on any row to see the original log line</li>
+                <li><strong>Multi-line Events</strong> - Stack traces and exceptions are kept together as single entries</li>
+              </ul>
+              <p><strong>Tip:</strong> This section is always visible so you can see your data while working with other sections.</p>
+              
+              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">💾 Import/Export</h3>
+              <p>Share your work or backup your configuration:</p>
+              <ul style="margin:8px 0; padding-left:20px">
+                <li><strong>Export Data</strong> - Save filtered results as JSON or CSV files (top header buttons)</li>
+                <li><strong>Export Library</strong> - Backup all your extractors and saved filters to a JSON file</li>
+                <li><strong>Import Library</strong> - Load extractors and filters from a JSON file (choose merge or replace)</li>
+              </ul>
+              <p><strong>Privacy:</strong> All data stays in your browser. Nothing is sent to any server. Extractors and filters are saved in localStorage.</p>
+              
+              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">⌨️ Keyboard Shortcuts</h3>
+              <ul style="margin:8px 0; padding-left:20px">
+                <li><strong>ESC</strong> - Close any open modal dialog</li>
+              </ul>
+              
+              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">🎨 Theme</h3>
+              <p>Click the 🌙/☀️ button in the top header to toggle between dark and light themes. Your preference is saved automatically.</p>
+            </div>
           </div>
         </div>
-        
-        <div id="extractorList" class="library-list">
-          <div class="empty-state">No extractors saved. Click "+ New Extractor" to create one.</div>
-        </div>
+      </section>
 
-        <details style="margin-top:15px">
-          <summary style="cursor:pointer; font-weight:500">Quick Test (one-time pattern)</summary>
-          <div class="controls" style="margin-top:10px">
-            <label class="wide"> Pattern
-              <input type="text" id="extractPattern" placeholder="^\[(?<ts>[^\]]+)\]\s(?<level>\w+)\s(?<message>.*)$" />
-            </label>
+      <!-- Upload Section -->
+      <section class="section-card active" id="section-upload" data-section="upload">
+        <h2 class="section-header">
+          <span class="section-icon">📁</span>
+          <span>Upload</span>
+        </h2>
+        <div class="section-content">
+          <div class="pad">
+            <div id="drop" class="drop">
+              Drag & drop a .log/.txt file here, or <button class="btn" id="pick">Browse…</button>
+              <input type="file" id="file" accept=".log,.txt,.json,.ndjson" hidden />
+            </div>
           </div>
-          <div class="flex" style="margin-top:10px">
-            <button class="btn" id="runExtract">Test Pattern</button>
+        </div>
+      </section>
+
+      <!-- Filters & Sort Section -->
+      <section class="section-card" id="section-filters" data-section="filters">
+        <h2 class="section-header">
+          <span class="section-icon">🔍</span>
+          <span>Filters & Sort</span>
+        </h2>
+        <div class="section-content">
+          <div class="pad">
+            <div class="controls">
+              <!-- Advanced Query moved below the Builder; use it for complex text/regex conditions -->
+              <!-- Level/From/To moved into Builder rules; use the builder to restrict by level and time -->
+              <!-- Regex moved to Advanced Query details -->
+              <label> Sort
+                <select id="sort">
+                  <option value="id">ID</option>
+                  <option value="ts">Timestamp</option>
+                  <option value="level">Level</option>
+                </select>
+              </label>
+              <label> Order
+                <select id="order">
+                  <option value="desc">Desc</option>
+                  <option value="asc">Asc</option>
+                </select>
+              </label>
+              <label> Page size
+                <select id="per">
+                  <option>25</option>
+                  <option selected>50</option>
+                  <option>100</option>
+                  <option>200</option>
+                </select>
+              </label>
+            </div>
+            <!-- Advanced Query: full width below the builder -->
+            <div style="margin-top:18px">
+              <label class="wide"> Advanced Text Query (applied in addition to Builder)
+                <textarea id="textQuery" placeholder="Enter advanced query syntax (e.g. level:ERROR AND user:alice)" rows="3"></textarea>
+              </label>
+              <div id="queryFields" style="margin-top:6px; display:flex; gap:8px; flex-wrap:wrap"></div>
+              <div id="queryError" style="color: #ffb4b4; font-size:12px; margin-top:6px"></div>
+            </div>
+              <div class="flex" style="margin-top:10px">
+                <span class="right pill" id="info">—</span>
+              </div>
+            <!-- Query Builder (initially hidden until toggled) -->
+            <div id="filterBuilder" style="margin-top:16px; display:block;">
+              <div id="rulesContainer"></div>
+              <div style="margin-top:8px">
+                <button class="btn" id="addFilterRule">+ Add Filter Rule</button>
+                <button class="btn ghost" id="clearFilterRules">Clear Rules</button>
+              </div>
+              <div id="builderPreview" style="margin-top:10px; font-family:monospace; color:var(--muted)"></div>
+            </div>
+            <div class="flex" style="margin-top:18px">
+              <button class="btn" id="apply">Apply</button>
+              <button class="btn ghost" id="clear">Clear filters</button>
+            </div>
           </div>
-        </details>
-      </div>
-    </section>
+        </div>
+      </section>
 
-    <section class="card" style="grid-column:1/-1">
-      <h2 class="collapsible-header">
-        <span class="collapse-icon">▼</span> Saved Filters
-      </h2>
-      <div class="pad collapsible-content">
-        <div class="flex" style="margin-bottom:10px">
-          <button class="btn" id="saveCurrentFilter" title="Save the current filter settings as a preset">💾 Save Current Filter</button>
-          <span class="right pill" id="filterLibInfo">—</span>
-        </div>
-        
-        <div id="filterList" class="library-list">
-          <div class="empty-state">No filters saved. Apply filters and click "Save Current Filter".</div>
-        </div>
-      </div>
-    </section>
+      <!-- Extractor Library Section -->
+      <section class="section-card" id="section-extractors" data-section="extractors">
+        <h2 class="section-header">
+          <span class="section-icon">📚</span>
+          <span>Extractor Library</span>
+        </h2>
+        <div class="section-content">
+          <div class="pad">
+            <div class="flex" style="margin-bottom:10px">
+              <button class="btn" id="addExtractor" title="Create a new regex extractor">+ New Extractor</button>
+              <button class="btn ghost" id="runActiveExtractors" title="Apply all checked extractors">▶ Run Active</button>
+              <label style="margin-left:10px"> Apply to
+                <select id="extractScope" title="Choose whether to apply extractors to all rows or only filtered rows">
+                  <option value="all">All rows</option>
+                  <option value="filtered">Filtered rows</option>
+                </select>
+              </label>
+              <span class="right pill" id="extractInfo">—</span>
+            </div>
+            
+            <div class="controls" style="margin-bottom:10px">
+              <label> Merge Strategy
+                <select id="mergeStrategy" title="How to handle when multiple extractors capture the same field">
+                  <option value="last-wins">Last Wins - Later extractors override earlier ones</option>
+                  <option value="first-wins">First Wins - Keep first captured value, skip later ones</option>
+                  <option value="merge">Merge - Combine all values (same as last-wins)</option>
+                </select>
+              </label>
+              <div style="font-size:0.85em; color:var(--muted); margin-top:5px; line-height:1.4">
+                When multiple active extractors capture the same field name, this setting determines which value is kept.
+              </div>
+            </div>
+            
+            <div id="extractorList" class="library-list">
+              <div class="empty-state">No extractors saved. Click "+ New Extractor" to create one.</div>
+            </div>
 
-    <section class="card" style="grid-column:1/-1">
-      <h2>Summary</h2>
-      <div class="pad">
-        <div class="stats">
-          <div class="stat"><div class="k">Rows</div><div class="v" id="sRows">0</div></div>
-          <div class="stat ok"><div class="k">INFO</div><div class="v" id="sInfo">0</div></div>
-          <div class="stat warn"><div class="k">WARN</div><div class="v" id="sWarn">0</div></div>
-          <div class="stat err"><div class="k">ERROR</div><div class="v" id="sErr">0</div></div>
-        </div>
-        <div class="tags">
-          <span class="tag" id="fileTag">no file</span>
-          <span class="tag" id="countTag">0 lines</span>
-          <span class="tag" id="filterTag">no filters</span>
-        </div>
-        <div style="margin-top:10px">
-          <canvas id="spark"></canvas>
-        </div>
-      </div>
-    </section>
-
-    <section class="card" style="grid-column:1/-1">
-      <h2>Events</h2>
-      <div class="pad">
-        <div class="flex" style="margin-bottom:8px">
-          <div class="pagination">
-            <button class="btn" id="first">⏮</button>
-            <button class="btn" id="prev">◀</button>
-            <span class="pill" id="pageLabel">1 / 1</span>
-            <button class="btn" id="next">▶</button>
-            <button class="btn" id="last">⏭</button>
+            <details style="margin-top:15px">
+              <summary style="cursor:pointer; font-weight:500">Quick Test (one-time pattern)</summary>
+              <div class="controls" style="margin-top:10px">
+                <label class="wide"> Pattern
+                  <input type="text" id="extractPattern" placeholder="^\[(?<ts>[^\]]+)\]\s(?<level>\w+)\s(?<message>.*)$" />
+                </label>
+              </div>
+              <div class="flex" style="margin-top:10px">
+                <button class="btn" id="runExtract">Test Pattern</button>
+              </div>
+            </details>
+            
           </div>
-          <span class="right pill" id="renderInfo">—</span>
         </div>
-        <div class="table-container">
-          <table>
-            <thead>
-              <tr id="thead-row">
-                <th style="width:72px">ID</th>
-                <th style="width:210px">Timestamp</th>
-                <th style="width:120px">Level</th>
-                <th>Message</th>
-              </tr>
-            </thead>
-            <tbody id="tbody"></tbody>
-          </table>
+      </section>
+
+      <!-- Saved Filters Section -->
+      <section class="section-card" id="section-saved-filters" data-section="saved-filters">
+        <h2 class="section-header">
+          <span class="section-icon">🔖</span>
+          <span>Saved Filters</span>
+        </h2>
+        <div class="section-content">
+          <div class="pad">
+            <div class="flex" style="margin-bottom:10px">
+              <button class="btn" id="saveCurrentFilter" title="Save the current filter settings as a preset">💾 Save Current Filter</button>
+              <span class="right pill" id="filterLibInfo">—</span>
+            </div>
+            
+            <div id="filterList" class="library-list">
+              <div class="empty-state">No filters saved. Apply filters and click "Save Current Filter".</div>
+            </div>
+          </div>
         </div>
-      </div>
-    </section>
-  </main>
+      </section>
+
+      <!-- Summary Section -->
+      <section class="section-card" id="section-summary" data-section="summary">
+        <h2 class="section-header">
+          <span class="section-icon">📊</span>
+          <span>Summary</span>
+        </h2>
+        <div class="section-content">
+          <div class="pad">
+            <div class="stats">
+              <div class="stat"><div class="k">Rows</div><div class="v" id="sRows">0</div></div>
+              <div class="stat ok"><div class="k">INFO</div><div class="v" id="sInfo">0</div></div>
+              <div class="stat warn"><div class="k">WARN</div><div class="v" id="sWarn">0</div></div>
+              <div class="stat err"><div class="k">ERROR</div><div class="v" id="sErr">0</div></div>
+            </div>
+            <div class="tags">
+              <span class="tag" id="fileTag">no file</span>
+              <span class="tag" id="countTag">0 lines</span>
+              <span class="tag" id="filterTag">no filters</span>
+            </div>
+            <div style="margin-top:10px">
+              <canvas id="spark"></canvas>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Results Section (Always Visible) -->
+      <section class="section-card always-visible" id="section-results" data-section="results">
+        <h2 class="section-header">
+          <span class="section-icon">📋</span>
+          <span>Results</span>
+        </h2>
+        <div class="section-content">
+          <div class="pad">
+            <div class="flex" style="margin-bottom:8px">
+              <div class="pagination">
+                <button class="btn" id="first">⏮</button>
+                <button class="btn" id="prev">◀</button>
+                <span class="pill" id="pageLabel">1 / 1</span>
+                <button class="btn" id="next">▶</button>
+                <button class="btn" id="last">⏭</button>
+              </div>
+              <span class="right pill" id="renderInfo">—</span>
+            </div>
+            <div id="tzInfo" style="font-size:12px; color:var(--muted); margin-bottom:8px;">Times shown in UTC by default</div>
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr id="thead-row">
+                    <th style="width:72px">ID</th>
+                    <th style="width:210px">Timestamp (<span id="tzLabel">local</span>)</th>
+                    <th style="width:120px">Level</th>
+                    <th>Message</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
 
   <!-- Extractor Modal -->
   <div id="extractorModal" class="modal">

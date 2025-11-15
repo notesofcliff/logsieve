@@ -135,6 +135,11 @@ header a.tag:hover {
 }
 
 /* Layout */
+.app-container {
+  display: flex;
+  min-height: calc(100vh - 200px);
+}
+
 main {
   padding: 1rem;
   margin: 0 auto;
@@ -292,6 +297,24 @@ textarea:focus {
 .theme-icon {
   font-size: 1rem;
   line-height: 1;
+}
+
+/* Hamburger Menu Button */
+.hamburger-menu {
+  min-width: 2.75rem;
+  padding: 0.625rem;
+  display: none;
+}
+
+.hamburger-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+@media (max-width: 900px) {
+  .hamburger-menu {
+    display: inline-flex;
+  }
 }
 
 @media (max-width: 768px) {
@@ -968,7 +991,183 @@ canvas {
   border: 1px solid #9ca3af;
 }
 
+/* Sidebar Navigation */
+.sidebar {
+  width: 250px;
+  background: var(--panel);
+  border-right: 2px solid rgba(184, 197, 209, .7);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+:root.light-theme .sidebar {
+  border-right: 2px solid #6b7280;
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 0;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1.25rem;
+  color: var(--muted);
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
+  font-size: 0.9375rem;
+}
+
+.nav-link:hover {
+  background: rgba(59, 130, 246, .08);
+  color: var(--ink);
+}
+
+.nav-link.active {
+  background: rgba(59, 130, 246, .12);
+  color: var(--accent);
+  border-left-color: var(--accent);
+  font-weight: 500;
+}
+
+.nav-icon {
+  font-size: 1.125rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.nav-text {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Main Content Area */
+.main-content {
+  flex: 1;
+  padding: 1rem;
+  overflow-x: hidden;
+}
+
+/* Section Cards (Accordion) */
+.section-card {
+  background: var(--panel);
+  border: 2px solid rgba(184, 197, 209, .7);
+  border-radius: 0.875rem;
+  box-shadow: 0 3px 15px rgba(0, 0, 0, .5);
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+:root.light-theme .section-card {
+  border: 2px solid #6b7280;
+  box-shadow: 0 3px 15px rgba(0, 0, 0, .15);
+}
+
+.section-header {
+  margin: 0;
+  padding: 0.875rem 1rem;
+  font-size: 0.9375rem;
+  letter-spacing: .02em;
+  color: var(--ink);
+  background: rgba(59, 130, 246, .08);
+  border-bottom: 2px solid rgba(184, 197, 209, .7);
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  transition: background 0.2s ease;
+}
+
+:root.light-theme .section-header {
+  border-bottom: 2px solid #6b7280;
+}
+
+.section-header:hover {
+  background: rgba(59, 130, 246, .15);
+}
+
+.section-icon {
+  font-size: 1.125rem;
+  line-height: 1;
+}
+
+.section-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out;
+}
+
+.section-card.active .section-content {
+  max-height: 5000px;
+  transition: max-height 0.5s ease-in;
+}
+
+/* Always visible sections don't collapse */
+.section-card.always-visible .section-header {
+  cursor: default;
+  background: transparent;
+}
+
+.section-card.always-visible .section-header:hover {
+  background: transparent;
+}
+
+.section-card.always-visible .section-content {
+  max-height: none;
+  overflow: visible;
+}
+
 /* Responsive adjustments */
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 999;
+    transform: translateX(-100%);
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .main-content {
+    width: 100%;
+  }
+
+  /* Overlay for mobile sidebar */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 998;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+  }
+
+  body.sidebar-open::before {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
 @media (max-width: 768px) {
   .stats {
     grid-template-columns: repeat(2, 1fr);
@@ -1022,5 +1221,9 @@ canvas {
   
   .modal-footer .btn {
     width: 100%;
+  }
+  
+  .sidebar {
+    width: 280px;
   }
 }
