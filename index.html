@@ -12,6 +12,9 @@
       <button class="btn hamburger-menu" id="hamburgerMenu" title="Toggle menu">
         <span class="hamburger-icon">☰</span>
       </button>
+      <button class="btn theme-toggle small-theme" id="themeToggleSmall" title="Toggle theme">
+        <span class="theme-icon">🌙</span>
+      </button>
       <h1>LogSieve · single‑file</h1>
       <button class="btn theme-toggle" id="themeToggle" title="Toggle theme">
         <span class="theme-icon">🌙</span>
@@ -35,6 +38,7 @@
   <div class="app-container">
     <!-- Sidebar Navigation -->
     <aside class="sidebar" id="sidebar">
+      <button class="btn ghost close-sidebar" id="closeSidebar" title="Close menu">✕</button>
       <nav class="sidebar-nav">
         <a href="#section-help" class="nav-link" data-section="help">
           <span class="nav-icon">❓</span>
@@ -91,16 +95,41 @@
               <p><strong>How to use:</strong> Drag and drop your file onto the upload area, or click "Browse..." to select a file. All processing happens in your browser - no data is uploaded to any server.</p>
               
               <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">🔍 Filters & Sort</h3>
-              <p>Narrow down your logs to find exactly what you need:</p>
+              <p>Narrow down your logs to find exactly what you need. LogSieve now uses an extensible Query Builder for structured filtering plus an Advanced Query input for free-form queries. Both are applied together when you click <strong>Apply</strong>.</p>
               <ul style="margin:8px 0; padding-left:20px">
-                <li><strong>Search</strong> - Free text search across all log content. Use multiple terms (space-separated) for AND logic</li>
-                <li><strong>Level</strong> - Filter by log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)</li>
-                <li><strong>Date Range</strong> - Set "From" and "To" timestamps to filter time windows</li>
-                <li><strong>Regex</strong> - Use regular expressions for advanced pattern matching</li>
+                <li><strong>Builder rules</strong> - Create structured rules by choosing a Field, Operator and Value. Use logical operators (AND/OR) between rules. The builder is the primary filter UI and is visible by default.</li>
+                <li><strong>Advanced Query</strong> - Use the Advanced Query for free-form text search and regular expressions. This is now a full-width area below the Query Builder and is applied together with builder rules.</li>
                 <li><strong>Sort</strong> - Order results by ID, timestamp, level, or any extracted field</li>
                 <li><strong>Page Size</strong> - Control how many results appear per page (25-200)</li>
               </ul>
-              <p><strong>Tip:</strong> Click "Apply" after changing filters, or "Clear filters" to reset everything.</p>
+              <p><strong>Tip:</strong> Click <strong>Apply</strong> after changing filters; the Builder and Advanced Query are applied together to allow flexible AND/OR combinations. Use "Clear filters" to reset the builder and advanced query.</p>
+
+              <h4 style="margin-top:1rem; font-size:14px; color:var(--ink)">Query Builder</h4>
+              <p>The Query Builder is an intuitive way to create structured filters without needing to remember syntax. A rule contains three parts:</p>
+              <ul style="margin:8px 0; padding-left:20px">
+                <li><strong>Field</strong> - Choose a field (standard fields: <em>level</em>, <em>ts</em>, <em>message</em>, <em>raw</em> or any extracted field)</li>
+                <li><strong>Operator</strong> - Operators are type-aware (text, numeric, date, array). Examples: equals, contains, &gt;, &lt;, before, after, between</li>
+                <li><strong>Value</strong> - Enter or pick a value. For date fields the builder shows a datetime picker and the <strong>between</strong> operator displays two pickers (start and end)</li>
+              </ul>
+              <p>Use the logic selector between rules to chain them with <em>AND</em> or <em>OR</em>. Click the <strong>Add Rule</strong> button to add a new rule; builder changes do not automatically apply until you click <strong>Apply</strong>.</p>
+
+              <h4 style="margin-top:1rem; font-size:14px; color:var(--ink)">Advanced Text Query</h4>
+              <p>For users who prefer a textual interface, the Advanced Query supports a compact syntax to express field filters and boolean logic:</p>
+              <ul style="margin:8px 0; padding-left:20px">
+                <li><code>field:value</code> — field matcher. For example: <code>level:ERROR</code></li>
+                <li>Operators like <code>&gt;=</code>, <code>&lt;</code> and range queries like <code>ts:2025-11-13..2025-11-14</code> (see the syntax helper)</li>
+                <li><code>AND</code> and <code>OR</code> combine expressions</li>
+              </ul>
+              <p><strong>Important:</strong> The Advanced Query is validated live but is only applied when you click <strong>Apply</strong>, keeping it separate from the builder. Saved filters remember both Builder rules and the Advanced Query.</p>
+
+              <h4 style="margin-top:1rem; font-size:14px; color:var(--ink)">Timestamps & Timezones</h4>
+              <p>LogSieve detects timestamp formats and tries to normalize them for consistent filtering and display. Key behaviors:</p>
+              <ul style="margin:8px 0; padding-left:20px">
+                <li>If a timestamp includes an explicit timezone (e.g. <code>2025-11-13T10:30:00.000Z</code>), it is parsed as UTC and we convert it to your local timezone for display</li>
+                <li>Naive timestamps (no timezone) like <code>2025-11-13 10:30:20.345</code> are treated as local timestamps</li>
+                <li>The Results table shows timestamps in your detected local timezone; a small note above the table displays your current timezone</li>
+                <li>Filtering and date comparisons are done using canonical ISO times, but the UI uses local time for input and display for better intuition</li>
+              </ul>
               
               <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">📚 Extractor Library</h3>
               <p>Extract structured data from unstructured logs using regular expressions with named groups:</p>
@@ -117,6 +146,7 @@
                 </li>
                 <li><strong>Quick Test</strong> - Use the collapsible "Quick Test" section to try a pattern once without saving</li>
               </ul>
+              <p style="margin-top:8px">When extractors create new fields, the builder will automatically surface unique values for that field as suggestions (click a value or use the datalist). This speeds up creating precise filters.</p>
               <p><strong>Tip:</strong> Extracted fields become sortable columns in the Results table and export cleanly to CSV/JSON.</p>
               
               <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">🔖 Saved Filters</h3>
@@ -126,7 +156,8 @@
                 <li><strong>Apply Saved Filter</strong> - Click the "Apply" button next to any saved filter to instantly load those settings</li>
                 <li><strong>Manage Filters</strong> - Edit names/descriptions or delete filters you no longer need</li>
               </ul>
-              <p><strong>Tip:</strong> Filter presets capture all settings including search text, level, date range, regex, and sort order.</p>
+              <p><strong>Tip:</strong> Filter presets capture all settings including builder rules, Advanced Query, and sort order.</p>
+              <p>Saved filters persist both Builder rules and the text form of Advanced Query so you can reapply exact searches later. If a saved filter contains invalid settings (missing builder values, etc) we will restore as much as possible and leave blank fields for you to fix before reapplying.</p>
               
               <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">📊 Summary</h3>
               <p>Get a quick overview of your log data:</p>
@@ -146,6 +177,13 @@
                 <li><strong>Multi-line Events</strong> - Stack traces and exceptions are kept together as single entries</li>
               </ul>
               <p><strong>Tip:</strong> This section is always visible so you can see your data while working with other sections.</p>
+
+              <h4 style="margin-top:1rem; font-size:14px; color:var(--ink)">Tips & Troubleshooting</h4>
+              <ul style="margin:8px 0; padding-left:20px">
+                <li><strong>Timestamps off by a few hours?</strong> Confirm whether your log timestamps have a timezone (e.g., trailing <code>Z</code>). If so we convert them to your timezone for display. You can see the detected timezone above the results.</li>
+                <li><strong>Builder rule shows no results</strong> - ensure you filled in a value for the rule. Empty rule values are ignored when applying to avoid unexpected matches.</li>
+                <li><strong>Regex failing</strong> - test patterns in Quick Test first; named groups populate fields used in the Builder and results.</li>
+              </ul>
               
               <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">💾 Import/Export</h3>
               <p>Share your work or backup your configuration:</p>
@@ -192,6 +230,26 @@
         </h2>
         <div class="section-content">
           <div class="pad">
+              <div class="flex" style="margin-top:10px">
+                <span class="right pill" id="info">—</span>
+              </div>
+            <!-- Query Builder (initially hidden until toggled) -->
+            <div id="filterBuilder" style="margin-top:16px; display:block;">
+              <div id="rulesContainer"></div>
+              <div style="margin-top:8px">
+                <button class="btn" id="addFilterRule">+ Add Filter Rule</button>
+                <button class="btn ghost" id="clearFilterRules">Clear Rules</button>
+              </div>
+              <div id="builderPreview" style="margin-top:10px; font-family:monospace; color:var(--muted)"></div>
+            </div>
+            <!-- Advanced Query: full width below the builder -->
+            <div style="margin-top:18px">
+              <label class="wide"> Advanced Text Query (applied in addition to Builder)
+                <textarea id="textQuery" placeholder="Enter advanced query syntax (e.g. level:ERROR AND user:alice)" rows="3" style="width:100%; box-sizing:border-box; resize:vertical;"></textarea>
+              </label>
+              <div id="queryFields" style="margin-top:6px; display:flex; gap:8px; flex-wrap:wrap"></div>
+              <div id="queryError" style="color: #ffb4b4; font-size:12px; margin-top:6px"></div>
+            </div>
             <div class="controls">
               <!-- Advanced Query moved below the Builder; use it for complex text/regex conditions -->
               <!-- Level/From/To moved into Builder rules; use the builder to restrict by level and time -->
@@ -217,26 +275,6 @@
                   <option>200</option>
                 </select>
               </label>
-            </div>
-            <!-- Advanced Query: full width below the builder -->
-            <div style="margin-top:18px">
-              <label class="wide"> Advanced Text Query (applied in addition to Builder)
-                <textarea id="textQuery" placeholder="Enter advanced query syntax (e.g. level:ERROR AND user:alice)" rows="3"></textarea>
-              </label>
-              <div id="queryFields" style="margin-top:6px; display:flex; gap:8px; flex-wrap:wrap"></div>
-              <div id="queryError" style="color: #ffb4b4; font-size:12px; margin-top:6px"></div>
-            </div>
-              <div class="flex" style="margin-top:10px">
-                <span class="right pill" id="info">—</span>
-              </div>
-            <!-- Query Builder (initially hidden until toggled) -->
-            <div id="filterBuilder" style="margin-top:16px; display:block;">
-              <div id="rulesContainer"></div>
-              <div style="margin-top:8px">
-                <button class="btn" id="addFilterRule">+ Add Filter Rule</button>
-                <button class="btn ghost" id="clearFilterRules">Clear Rules</button>
-              </div>
-              <div id="builderPreview" style="margin-top:10px; font-family:monospace; color:var(--muted)"></div>
             </div>
             <div class="flex" style="margin-top:18px">
               <button class="btn" id="apply">Apply</button>

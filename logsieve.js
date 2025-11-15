@@ -2292,6 +2292,20 @@ function initializeSidebar() {
   if (hamburger) {
     hamburger.addEventListener('click', toggleMobileSidebar);
   }
+
+  // Sidebar close button (mobile)
+  const closeSidebarBtn = $('#closeSidebar');
+  if (closeSidebarBtn) {
+    closeSidebarBtn.addEventListener('click', (e) => {
+      // If mobile, use existing mobile close behavior
+      if (window.matchMedia('(max-width: 900px)').matches) {
+        closeMobileSidebar();
+      } else {
+        // Desktop: collapse sidebar by toggling a class on body
+        document.body.classList.toggle('sidebar-collapsed');
+      }
+    });
+  }
   
   // Close sidebar when clicking overlay
   document.addEventListener('click', (e) => {
@@ -2325,7 +2339,13 @@ function initializeSidebar() {
 function toggleMobileSidebar() {
   const sidebar = $('#sidebar');
   const body = document.body;
-  
+  // If the sidebar was collapsed on desktop, un-collapse it (re-open)
+  if (body.classList.contains('sidebar-collapsed')) {
+    body.classList.remove('sidebar-collapsed');
+    return;
+  }
+
+  // Default mobile toggle behavior: slide in/out
   sidebar.classList.toggle('open');
   body.classList.toggle('sidebar-open');
 }
@@ -2605,13 +2625,16 @@ function initializeTheme() {
 function setTheme(theme) {
   const root = document.documentElement;
   const themeIcon = $('#themeToggle .theme-icon');
+  const themeIconSmall = $('#themeToggleSmall .theme-icon');
   
   if (theme === 'light') {
     root.classList.add('light-theme');
     themeIcon.textContent = '☀️';
+    if (themeIconSmall) themeIconSmall.textContent = '☀️';
   } else {
     root.classList.remove('light-theme');
     themeIcon.textContent = '🌙';
+    if (themeIconSmall) themeIconSmall.textContent = '🌙';
   }
   
   // Save preference
@@ -2631,8 +2654,12 @@ function toggleTheme() {
  */
 function initializeThemeToggle() {
   const themeToggle = $('#themeToggle');
+  const themeToggleSmall = $('#themeToggleSmall');
   if (themeToggle) {
     themeToggle.addEventListener('click', toggleTheme);
+  }
+  if (themeToggleSmall) {
+    themeToggleSmall.addEventListener('click', toggleTheme);
   }
   
   // Initialize theme on page load

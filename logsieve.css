@@ -198,6 +198,12 @@ main {
   grid-column: 1 / -1;
 }
 
+/* Wide label variant used in other contexts (not only in .controls) */
+label.wide {
+  display: block;
+  width: 100%;
+}
+
 .controls label {
   display: flex;
   flex-direction: column;
@@ -314,7 +320,16 @@ textarea:focus {
 @media (max-width: 900px) {
   .hamburger-menu {
     display: inline-flex;
+    position: fixed;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 2002;
   }
+
+  /* Keep the theme toggle hidden by default; show next to hamburger on small screens */
+  .small-theme { display: inline-flex; margin-left: 48px; }
+  /* Hide the primary theme-toggle on small screens to avoid overlap with the hamburger */
+  .header-top .theme-toggle:not(.small-theme) { display: none; }
 }
 
 @media (max-width: 768px) {
@@ -995,13 +1010,15 @@ canvas {
 .sidebar {
   width: 250px;
   background: var(--panel);
+  position: relative; /* allow absolute child button */
   border-right: 2px solid rgba(184, 197, 209, .7);
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  overflow-y: auto;
-  flex-shrink: 0;
-  transition: transform 0.3s ease;
+}
+
+.close-sidebar {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: inline-flex; /* visible on all sizes */
 }
 
 :root.light-theme .sidebar {
@@ -1226,4 +1243,25 @@ canvas {
   .sidebar {
     width: 280px;
   }
+    
+    /* Show close button within the slide-out sidebar on mobile */
+    .close-sidebar { display: inline-flex; }
 }
+
+  @media (min-width: 900px) {
+    /* When the user hides the sidebar on desktop, expand the main area */
+    body.sidebar-collapsed .grid {
+      grid-template-columns: 1fr;
+    }
+    body.sidebar-collapsed .sidebar {
+      display: none;
+    }
+      /* When collapsed, provide a way to reopen via the hamburger on desktop */
+      body.sidebar-collapsed .hamburger-menu {
+        display: inline-flex;
+        position: fixed;
+        top: 0.5rem;
+        left: 0.5rem;
+        z-index: 2002;
+      }
+  }
