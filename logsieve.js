@@ -41,23 +41,49 @@ function guessLevel(line) {
  * @returns {string} - ISO timestamp or empty string
  */
 function tryTs(line) {
-  // ISO-ish yyyy-mm-dd[ T]hh:mm:ss(.sss)?
+  // First try ISO-ish yyyy-mm-dd[ T]hh:mm:ss(.sss)?
   const m = line.match(/(\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?)/);
-  if (!m) return "";
-  const raw = m[1];
-  // Normalize fractional seconds separator and replace space with T for readability
-  const iso = raw.replace(" ", "T").replace(",", ".");
-  // Create a Date using numeric components to ensure it's treated as a local timestamp
-  const parts = iso.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?/);
-  let d;
-  if (parts) {
-    const [, y, mo, da, hh, mm, ss, frac] = parts;
-    const ms = frac ? Math.floor(Number('0.' + frac) * 1000) : 0;
-    d = new Date(Number(y), Number(mo) - 1, Number(da), Number(hh), Number(mm), Number(ss), ms);
-  } else {
-    d = new Date(iso);
+  if (m) {
+    const raw = m[1];
+    // Normalize fractional seconds separator and replace space with T for readability
+    const iso = raw.replace(" ", "T").replace(",", ".");
+    // Create a Date using numeric components to ensure it's treated as a local timestamp
+    const parts = iso.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?/);
+    let d;
+    if (parts) {
+      const [, y, mo, da, hh, mm, ss, frac] = parts;
+      const ms = frac ? Math.floor(Number('0.' + frac) * 1000) : 0;
+      d = new Date(Number(y), Number(mo) - 1, Number(da), Number(hh), Number(mm), Number(ss), ms);
+    } else {
+      d = new Date(iso);
+    }
+    return isNaN(d) ? "" : d.toISOString();
   }
-  return isNaN(d) ? "" : d.toISOString();
+
+  // Try "MMM DD HH:MM:SS" format (e.g., Oct 28 11:11:15)
+  const monthMap = {
+    'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+    'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+  };
+  const monthDayMatch = line.match(/^([A-Za-z]{3})\s+(\d{1,2})\s+(\d{1,2}):(\d{2}):(\d{2})(?:\.(\d+))?/);
+  if (monthDayMatch) {
+    const [, monthStr, day, hour, minute, second, frac] = monthDayMatch;
+    const month = monthMap[monthStr];
+    if (month !== undefined) {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+      let year = currentYear;
+      if (month > currentMonth) {
+        year = currentYear - 1;
+      }
+      const ms = frac ? Math.floor(Number('0.' + frac) * 1000) : 0;
+      const d = new Date(year, month, Number(day), Number(hour), Number(minute), Number(second), ms);
+      return isNaN(d) ? "" : d.toISOString();
+    }
+  }
+
+  return "";
 }
 
 /**
@@ -85,6 +111,29 @@ function parseTimestampToISO(s) {
     return isNaN(d) ? '' : d.toISOString();
   }
 
+  // Handle "MMM DD HH:MM:SS" format (e.g., Oct 28 11:11:15)
+  const monthMap = {
+    'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+    'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+  };
+  const monthDayParts = str.match(/^([A-Za-z]{3})\s+(\d{1,2})\s+(\d{1,2}):(\d{2}):(\d{2})(?:\.(\d+))?/);
+  if (monthDayParts) {
+    const [, monthStr, day, hour, minute, second, frac] = monthDayParts;
+    const month = monthMap[monthStr];
+    if (month !== undefined) {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth();
+      let year = currentYear;
+      if (month > currentMonth) {
+        year = currentYear - 1;
+      }
+      const ms = frac ? Math.floor(Number('0.' + frac) * 1000) : 0;
+      const d = new Date(year, month, Number(day), Number(hour), Number(minute), Number(second), ms);
+      return isNaN(d) ? '' : d.toISOString();
+    }
+  }
+
   // Fallback to Date
   const d = new Date(str);
   return isNaN(d) ? '' : d.toISOString();
@@ -108,7 +157,15 @@ function formatLocalDatetime(isoOrRaw) {
  * @returns {string} - Line without timestamp prefix
  */
 function stripPrefix(line) {
-  return line.replace(/^\s*\[?\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?\]?\s*/, "");
+  // First try to remove ISO-style timestamps
+  let result = line.replace(/^\s*\[?\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?\]?\s*/, "");
+  
+  // If no ISO timestamp was removed, try to remove "MMM DD HH:MM:SS" format
+  if (result === line) {
+    result = line.replace(/^\s*\[?[A-Za-z]{3}\s+\d{1,2}\s+\d{1,2}:\d{2}:\d{2}(?:[.,]\d+)?\]?\s*/, "");
+  }
+  
+  return result;
 }
 
 /**
@@ -148,7 +205,7 @@ function isContinuationLine(line) {
   if (!line.trim()) return false;
   
   // Check if line has a timestamp (if yes, it's a new event)
-  if (/^\s*\[?\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/.test(line)) {
+  if (/^\s*\[?\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/.test(line) || /^\s*\[?[A-Za-z]{3}\s+\d{1,2}\s+\d{1,2}:\d{2}:\d{2}/.test(line)) {
     return false;
   }
   
@@ -440,6 +497,7 @@ let rows = [];        // Full dataset
 let view = [];        // Filtered/sorted view
 let page = 1;         // Current page number
 let per = 50;         // Items per page
+let totalRows = 0;    // Total rows in filtered view
 let fieldNames = new Set();  // Track all extracted field names
 let currentFilterConfig = null;
 let builderOpen = true; // make builder primary and visible by default
@@ -449,265 +507,163 @@ let appliedAdvancedQuery = null;
 // Detected user's timezone name (IANA). Set at startup for consistent rendering
 const userTimeZone = (Intl && Intl.DateTimeFormat && Intl.DateTimeFormat().resolvedOptions().timeZone) || 'Local';
 
+// ---------- Worker Communication ----------
+
+let worker = null;
+let pendingRequests = new Map(); // Track pending worker requests
+
 /**
- * Parse raw log text into structured log entries
- * Supports multi-line events (tracebacks, stack traces)
- * @param {string} text - Raw log file content
- * @returns {Array<Object>} - Array of parsed log entries
+ * Initialize the WebWorker
  */
-function parseLogText(text) {
-  const out = [];
-  const lines = text.split(/\r?\n/);
-  let id = 1;
-  let currentEntry = null;
+function initWorker() {
+  if (worker) return; // Already initialized
 
-  for (const line of lines) {
-    if (!line.trim()) continue;
-
-    // Check if this is a continuation of the previous entry
-    if (currentEntry && isContinuationLine(line)) {
-      // Append to current entry's raw and message
-      currentEntry.raw += '\n' + line;
-      currentEntry.message += '\n' + line;
-      // Update search index
-      currentEntry._lc = (currentEntry.raw + " " + currentEntry.message).toLowerCase();
-      continue;
-    }
-
-    // If we have a current entry, save it before starting a new one
-    if (currentEntry) {
-      out.push(currentEntry);
-    }
-
-    // Start a new entry
-    const ts = tryTs(line);
-    const level = guessLevel(line);
-    const msg = stripPrefix(line) || line; // Use full line if no prefix found
-
-    currentEntry = {
-      id: id++,
-      ts,
-      level,
-      message: msg,
-      raw: line,
-      fields: {},
-      _lc: (line + " " + msg).toLowerCase() // Lowercase for search
-    };
-  }
-
-  // Don't forget the last entry
-  if (currentEntry) {
-    out.push(currentEntry);
-  }
-
-  return out;
+  worker = new Worker('logsieve-worker.js');
+  worker.onmessage = handleWorkerMessage;
+  worker.onerror = handleWorkerError;
 }
 
 /**
- * Parse CSV data into structured log entries
- * @param {string} text - CSV file content
- * @returns {Array<Object>} - Array of parsed log entries
+ * Handle messages from the worker
  */
-function parseCSV(text) {
-  const out = [];
-  const lines = text.split(/\r?\n/).filter(line => line.trim());
-  
-  if (lines.length === 0) return out;
+function handleWorkerMessage(e) {
+  const { type, data, id } = e.data;
 
-  // Parse CSV (basic implementation, handles quoted fields)
-  function parseCSVLine(line) {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-    
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      const nextChar = line[i + 1];
-      
-      if (char === '"') {
-        if (inQuotes && nextChar === '"') {
-          current += '"';
-          i++; // Skip next quote
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (char === ',' && !inQuotes) {
-        result.push(current.trim());
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    result.push(current.trim());
-    return result;
+  // Resolve pending request if this is a response to a specific request
+  if (id && pendingRequests.has(id)) {
+    const resolve = pendingRequests.get(id);
+    pendingRequests.delete(id);
+    resolve({ type, data });
+    return;
   }
 
-  // Parse header
-  const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase());
-  
-  // Find standard column indices
-  const idIdx = headers.findIndex(h => h === 'id');
-  const tsIdx = headers.findIndex(h => h === 'ts' || h === 'timestamp' || h === 'time' || h === 'date');
-  const levelIdx = headers.findIndex(h => h === 'level' || h === 'severity' || h === 'loglevel');
-  const msgIdx = headers.findIndex(h => h === 'message' || h === 'msg' || h === 'text' || h === 'description');
-  const rawIdx = headers.findIndex(h => h === 'raw');
+  // Handle unsolicited messages
+  switch (type) {
+    case 'PARSE_COMPLETE':
+      rows = data.rows || [];
+      fieldNames = new Set(data.fieldNames || []);
+      FieldRegistry.updateFromDataset(rows);
+      $("#info").textContent = `Parsed ${fmt(rows.length)} entries`;
+      $("#uploadProgress").style.display = 'none';
+      applyFilters();
+      break;
 
-  // Parse data rows
-  let rowId = 1;
-  for (let i = 1; i < lines.length; i++) {
-    const values = parseCSVLine(lines[i]);
-    if (values.length === 0 || (values.length === 1 && !values[0])) continue;
+    case 'FILTER_COMPLETE':
+      view = data.view || [];
+      page = 1; // Reset to first page
+      totalRows = data.viewLength || 0; // Store total rows for pagination
+      $("#filterProgress").style.display = 'none';
+      $("#savedFilterProgress").style.display = 'none';
+      render();
+      break;
 
-    const row = {
-      id: idIdx >= 0 && values[idIdx] ? parseInt(values[idIdx]) : rowId++,
-      ts: '',
-      level: '',
-      message: '',
-      raw: '',
-      fields: {},
-      _lc: ''
-    };
+    case 'EXTRACTORS_COMPLETE':
+      fieldNames = new Set(data.newFieldNames || []);
+      FieldRegistry.updateFromDataset(rows);
+      $("#extractInfo").textContent = `Applied extractors · ${fmt(data.results.total)} matches`;
+      $("#extractorProgress").style.display = 'none';
+      updateSortOptions();
+      renderQueryFields();
+      applyFilters();
+      break;
 
-    // Map standard columns
-    if (tsIdx >= 0 && values[tsIdx]) {
-      row.ts = parseTimestampToISO(values[tsIdx]) || values[tsIdx];
-    }
-    
-    if (levelIdx >= 0 && values[levelIdx]) {
-      row.level = values[levelIdx].toUpperCase();
-      if (row.level === 'WARN') row.level = 'WARNING';
-    }
-    
-    if (msgIdx >= 0 && values[msgIdx]) {
-      row.message = values[msgIdx];
-    }
-    
-    if (rawIdx >= 0 && values[rawIdx]) {
-      row.raw = values[rawIdx];
-    } else {
-      // If no raw column, reconstruct from all values
-      row.raw = values.join(' | ');
-    }
+    case 'PAGE_DATA':
+      // Handle paginated data for rendering
+      renderPage(data);
+      break;
 
-    // Map remaining columns as fields
-    headers.forEach((header, idx) => {
-      if (idx !== idIdx && idx !== tsIdx && idx !== levelIdx && idx !== msgIdx && idx !== rawIdx) {
-        if (values[idx]) {
-          // Parse JSON arrays if present
-          if (values[idx].startsWith('[') && values[idx].endsWith(']')) {
-            try {
-              row.fields[header] = JSON.parse(values[idx]);
-              fieldNames.add(header);
-            } catch (e) {
-              row.fields[header] = [values[idx]];
-              fieldNames.add(header);
-            }
-          } else {
-            row.fields[header] = [values[idx]];
-            fieldNames.add(header);
-          }
-        }
+    case 'STATS_DATA':
+      renderStatsFromWorker(data);
+      break;
+
+    case 'FULL_VIEW_DATA':
+      // This is handled by the pending request resolver
+      break;
+
+    case 'PARSE_QUERY_RESULT':
+      // This is handled by the pending request resolver
+      break;
+
+    case 'PROGRESS':
+      const { percent, message, operation } = data;
+      if (operation === 'parsing') {
+        const container = $("#uploadProgress");
+        const fill = $("#uploadProgressFill");
+        const text = $("#uploadProgressText");
+        container.style.display = 'block';
+        fill.style.width = percent + '%';
+        text.textContent = message;
+      } else if (operation === 'extracting') {
+        const container = $("#extractorProgress");
+        const fill = $("#extractorProgressFill");
+        const text = $("#extractorProgressText");
+        container.style.display = 'block';
+        fill.style.width = percent + '%';
+        text.textContent = message;
+      } else if (operation === 'filtering') {
+        const container = $("#filterProgress");
+        const fill = $("#filterProgressFill");
+        const text = $("#filterProgressText");
+        container.style.display = 'block';
+        fill.style.width = percent + '%';
+        text.textContent = message;
+      } else if (operation === 'saved-filtering') {
+        const container = $("#savedFilterProgress");
+        const fill = $("#savedFilterProgressFill");
+        const text = $("#savedFilterProgressText");
+        container.style.display = 'block';
+        fill.style.width = percent + '%';
+        text.textContent = message;
       }
+      break;
+
+    case 'ERROR':
+      console.error('Worker error:', data.message);
+      alert('Processing error: ' + data.message);
+      break;
+
+    default:
+      console.warn('Unknown worker message type:', type);
+  }
+}
+
+/**
+ * Handle worker errors
+ */
+function handleWorkerError(error) {
+  console.error('Worker error:', error);
+  alert('Worker error: ' + error.message);
+}
+
+/**
+ * Send a message to the worker and optionally wait for response
+ */
+function sendToWorker(type, data, waitForResponse = false) {
+  if (!worker) {
+    throw new Error('Worker not initialized');
+  }
+
+  // Ensure data is serializable by deep cloning
+  const serializableData = (() => {
+    try {
+      const str = JSON.stringify(data);
+      return str === undefined ? null : JSON.parse(str);
+    } catch (e) {
+      console.error('Data not serializable, using null', data, e);
+      return null;
+    }
+  })();
+  const message = { type, data: serializableData };
+  if (waitForResponse) {
+    const id = generateUUID();
+    message.id = id;
+    return new Promise((resolve) => {
+      pendingRequests.set(id, resolve);
+      worker.postMessage(message);
     });
-
-    // Build search index
-    row._lc = (row.raw + " " + row.message + " " + Object.values(row.fields).flat().join(" ")).toLowerCase();
-    out.push(row);
+  } else {
+    worker.postMessage(message);
   }
-
-  return out;
-}
-
-/**
- * Parse JSON data into structured log entries
- * @param {string} text - JSON file content
- * @returns {Array<Object>} - Array of parsed log entries
- */
-function parseJSON(text) {
-  const out = [];
-  let data;
-
-  try {
-    data = JSON.parse(text);
-  } catch (e) {
-    console.error('Failed to parse JSON:', e);
-    alert('Invalid JSON file: ' + e.message);
-    return out;
-  }
-
-  // Handle both single object and array of objects
-  const items = Array.isArray(data) ? data : [data];
-  
-  let rowId = 1;
-  for (const item of items) {
-    if (typeof item !== 'object' || item === null) continue;
-
-    const row = {
-      id: item.id !== undefined ? item.id : rowId++,
-      ts: '',
-      level: '',
-      message: '',
-      raw: '',
-      fields: {},
-      _lc: ''
-    };
-
-    // Map standard properties
-    if (item.ts || item.timestamp || item.time || item.date) {
-      const tsVal = item.ts || item.timestamp || item.time || item.date;
-      row.ts = parseTimestampToISO(tsVal) || String(tsVal);
-    }
-
-    if (item.level || item.severity || item.loglevel) {
-      row.level = String(item.level || item.severity || item.loglevel).toUpperCase();
-      if (row.level === 'WARN') row.level = 'WARNING';
-    }
-
-    if (item.message || item.msg || item.text || item.description) {
-      row.message = String(item.message || item.msg || item.text || item.description);
-    }
-
-    if (item.raw) {
-      row.raw = String(item.raw);
-    } else {
-      // Reconstruct raw from JSON
-      row.raw = JSON.stringify(item);
-    }
-
-    // Map remaining properties as fields
-    const standardProps = new Set(['id', 'ts', 'timestamp', 'time', 'date', 'level', 'severity', 
-                                    'loglevel', 'message', 'msg', 'text', 'description', 'raw', '_lc']);
-    
-    for (const [key, value] of Object.entries(item)) {
-      if (!standardProps.has(key)) {
-        // Wrap values in arrays for consistency with extractor output
-        if (Array.isArray(value)) {
-          row.fields[key] = value;
-        } else if (value !== null && value !== undefined) {
-          row.fields[key] = [String(value)];
-        }
-        fieldNames.add(key);
-      }
-    }
-
-    // Also handle nested 'fields' object if present
-    if (item.fields && typeof item.fields === 'object') {
-      for (const [key, value] of Object.entries(item.fields)) {
-        if (Array.isArray(value)) {
-          row.fields[key] = value;
-        } else if (value !== null && value !== undefined) {
-          row.fields[key] = [String(value)];
-        }
-        fieldNames.add(key);
-      }
-    }
-
-    // Build search index
-    row._lc = (row.raw + " " + row.message + " " + Object.values(row.fields).flat().join(" ")).toLowerCase();
-    out.push(row);
-  }
-
-  return out;
 }
 
 // ---------- Field Registry & Operators (Phase 1) ----------
@@ -932,70 +888,22 @@ function migrateAllFilters() {
 /**
  * Apply all active filters to the dataset
  */
-
-function parseAdvancedQuery() {
-  const tq = $("#textQuery");
-  if (!tq) return null;
-  const text = tq.value.trim();
-  if (!text) return null;
-  try {
-    const parser = new QueryParser(text);
-    const rules = parser.parse();
-    // words are treated as quick search tokens
-    const words = parser.tokens.filter(t => t.type === 'WORD').map(t => t.value);
-    return { version: 2, rules, quickSearch: words.join(' ') };
-  } catch (e) {
-    // Malformed advanced query; show an error indicator but don't break filtering
-    $('#queryError').textContent = 'Query parse error: ' + (e.message || e);
-    return null;
-  }
-}
-
-function applyFilters() {
+function applyFilters(operation = 'filtering') {
   // Builder rules are stored in currentFilterConfig
 
-  let v = rows;
+  const sortConfig = {
+    field: $("#sort").value,
+    order: $("#order").value
+  };
 
-  // Builder: if configured via builder, apply structured filter on top first
-  if (appliedFilterConfig && (appliedFilterConfig.rules && appliedFilterConfig.rules.length > 0)) {
-    v = applyFilterConfig(v, appliedFilterConfig);
-  }
+  const filterConfig = {
+    builder: appliedFilterConfig,
+    advanced: appliedAdvancedQuery,
+    sort: sortConfig,
+    operation
+  };
 
-  // Advanced: apply only if the user pressed Apply (appliedAdvancedQuery)
-  if (appliedAdvancedQuery) {
-    v = applyFilterConfig(v, appliedAdvancedQuery);
-  }
-
-  // legacy date/level filters were removed; prefer builder rules
-
-  // Sort results
-  const sort = $("#sort").value;
-  const ord = $("#order").value;
-  v = v.slice().sort((a, b) => {
-    let A, B;
-    
-    // Check if sorting by a field column
-    if (sort.startsWith('field:')) {
-      const fieldName = sort.substring(6);
-      const aVal = a.fields?.[fieldName];
-      const bVal = b.fields?.[fieldName];
-      
-      // Handle arrays - use first element or stringify
-      A = Array.isArray(aVal) ? (aVal.length > 0 ? aVal[0] : '') : (aVal || '');
-      B = Array.isArray(bVal) ? (bVal.length > 0 ? bVal[0] : '') : (bVal || '');
-    } else {
-      A = a[sort] || "";
-      B = b[sort] || "";
-    }
-    
-    if (A < B) return ord === 'asc' ? -1 : 1;
-    if (A > B) return ord === 'asc' ? 1 : -1;
-    return 0;
-  });
-
-  view = v;
-  page = 1;
-  render();
+  sendToWorker('APPLY_FILTERS', filterConfig);
 }
 
 /**
@@ -1013,6 +921,14 @@ function paginate(list) {
  * Render the current view to the UI
  */
 function render() {
+  // Request current page data from worker
+  sendToWorker('GET_PAGE', { page, per });
+}
+
+/**
+ * Render a specific page of data
+ */
+function renderPage(pageData) {
   const t0 = performance.now();
   const body = $("#tbody");
   const theadRow = $("#thead-row");
@@ -1024,16 +940,16 @@ function render() {
     <th style="width:72px">ID</th>
   <th style="width:210px">Timestamp (<span id="tzLabel">${escapeHtml(userTimeZone)}</span>)</th>
     <th style="width:120px">Level</th>
-    <th>Message</th>
-    ${sortedFields.map(f => `<th style="min-width:150px">${escapeHtml(f)}</th>`).join('')}
+    <th style="max-width:80ch">Message</th>
+    ${sortedFields.map(f => `<th style="width:150px">${escapeHtml(f)}</th>`).join('')}
   `;
 
-  const pageRows = paginate(view);
+  const pageRows = pageData.pageRows;
   const frag = document.createDocumentFragment();
 
   for (const r of pageRows) {
     const tr = document.createElement('tr');
-    
+
     // Build field cells - format arrays nicely
     const fieldCells = sortedFields.map(fieldName => {
       const val = r.fields?.[fieldName];
@@ -1047,7 +963,7 @@ function render() {
       }
       return `<td>${escapeHtml(String(val))}</td>`;
     }).join('');
-    
+
     tr.innerHTML = `
       <td>${r.id}</td>
     <td>${formatLocalDatetime(r.ts) || ''}</td>
@@ -1060,12 +976,14 @@ function render() {
   body.appendChild(frag);
 
   // Update UI elements
-  $("#pageLabel").textContent = `${page} / ${Math.max(1, Math.ceil(view.length / per))}`;
-  $("#renderInfo").textContent = `${fmt(view.length)} rows · showing ${fmt(pageRows.length)} · ${Math.round(performance.now() - t0)}ms`;
-  $("#countTag").textContent = `${fmt(rows.length)} lines`;
+  $("#pageLabel").textContent = `${pageData.currentPage} / ${pageData.totalPages}`;
+  $("#renderInfo").textContent = `${fmt(pageData.totalRows)} rows · showing ${fmt(pageRows.length)} · ${Math.round(performance.now() - t0)}ms`;
+  $("#countTag").textContent = `${fmt(pageData.totalRows)} lines`;
 
-  updateFilterTag();
-  renderStats();
+  // Store total rows for pagination calculations
+  totalRows = pageData.totalRows;
+  // Request stats separately
+  sendToWorker('GET_STATS');
 }
 
 /**
@@ -1082,21 +1000,20 @@ function updateFilterTag() {
  * Render statistics and sparkline chart
  */
 function renderStats() {
-  $("#sRows").textContent = fmt(view.length);
-  $("#sInfo").textContent = fmt(view.filter(r => r.level === 'INFO').length);
-  $("#sWarn").textContent = fmt(view.filter(r => r.level === 'WARNING').length);
-  $("#sErr").textContent = fmt(view.filter(r => r.level === 'ERROR').length);
+  // Stats are now requested separately and handled in renderStatsFromWorker
+}
+
+/**
+ * Render statistics from worker data
+ */
+function renderStatsFromWorker(stats) {
+  $("#sRows").textContent = fmt(stats.totalRows);
+  $("#sInfo").textContent = fmt(stats.infoCount);
+  $("#sWarn").textContent = fmt(stats.warnCount);
+  $("#sErr").textContent = fmt(stats.errorCount);
 
   // Create time-bucket sparkline (per minute)
-  const buckets = new Map();
-  for (const r of view) {
-    if (!r.ts) continue;
-    const k = r.ts.slice(0, 16); // YYYY-MM-DDTHH:MM
-    buckets.set(k, (buckets.get(k) || 0) + 1);
-  }
-
-  const pairs = [...buckets.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1);
-  drawSpark($("#spark"), pairs.map(p => p[1]));
+  drawSpark($("#spark"), stats.timeBuckets);
 }
 
 /**
@@ -1293,7 +1210,7 @@ function updateSortOptions() {
 function runActiveExtractors() {
   const activeIds = Storage.getActiveExtractors();
   console.log('Active extractor IDs:', activeIds);
-  
+
   if (activeIds.length === 0) {
     $("#extractInfo").textContent = 'No active extractors';
     return;
@@ -1301,7 +1218,7 @@ function runActiveExtractors() {
 
   const allExtractors = Storage.getExtractors();
   const activeExtractors = allExtractors.filter(e => activeIds.includes(e.id));
-  
+
   console.log('Found active extractors:', activeExtractors.length, 'of', allExtractors.length, 'total');
   console.log('Active extractors:', activeExtractors.map(e => ({ id: e.id, name: e.name, enabled: e.enabled })));
 
@@ -1310,19 +1227,11 @@ function runActiveExtractors() {
     return;
   }
 
-  const scope = $("#extractScope").value === 'filtered' ? view : rows;
-  const results = runMultipleExtractors(activeExtractors, scope);
-  
-  console.log('Extractor results:', results);
+  const scope = $("#extractScope").value === 'filtered' ? 'filtered' : 'all';
 
-  $("#extractInfo").textContent = `Applied ${activeExtractors.length} extractor(s) to ${fmt(scope.length)} rows · ${fmt(results.total)} matches`;
-  // Update field registry after new fields were added by extractors
-  FieldRegistry.updateFromDataset(rows);
-
-  renderQueryFields();
-  updateSortOptions();
-  renderQueryFields();
-  applyFilters();
+  $("#extractInfo").textContent = 'Running extractors…';
+  $("#extractorProgress").style.display = 'block';
+  sendToWorker('RUN_EXTRACTORS', { extractors: activeExtractors, scope });
 }
 
 function renderQueryFields() {
@@ -1403,33 +1312,23 @@ function detectFileFormat(filename) {
 async function handleFile(file) {
   $("#fileTag").textContent = file.name;
   $("#info").textContent = 'Parsing…';
+  $("#uploadProgress").style.display = 'block';
 
-  const text = await readFileAsText(file);
-  const format = detectFileFormat(file.name);
-  
-  // Clear existing field names for new file
-  fieldNames.clear();
-  
-  // Route to appropriate parser
-  switch (format) {
-    case 'csv':
-      rows = parseCSV(text);
-      $("#info").textContent = `Parsed ${fmt(rows.length)} rows from CSV`;
-      break;
-    case 'json':
-      rows = parseJSON(text);
-      $("#info").textContent = `Parsed ${fmt(rows.length)} records from JSON`;
-      break;
-    default:
-      rows = parseLogText(text);
-      $("#info").textContent = `Parsed ${fmt(rows.length)} lines from log file`;
-      break;
+  try {
+    const text = await readFileAsText(file);
+    const format = detectFileFormat(file.name);
+
+    // Clear existing field names for new file
+    fieldNames.clear();
+
+    // Send to worker for processing
+    sendToWorker('PARSE_DATA', { text, format });
+  } catch (error) {
+    console.error('File reading error:', error);
+    $("#info").textContent = 'Error reading file';
+    $("#uploadProgress").style.display = 'none';
+    alert('Error reading file: ' + error.message);
   }
-
-  // Update field registry metadata for UI and operator suggestions
-  FieldRegistry.updateFromDataset(rows);
-
-  applyFilters();
 }
 
 // ---------- Export Functions ----------
@@ -1437,58 +1336,75 @@ async function handleFile(file) {
 /**
  * Export current view as JSON file
  */
-function exportJSON() {
-  const blob = new Blob([JSON.stringify(view, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'logsieve-data.json';
-  a.click();
+/**
+ * Export current view as JSON file
+ */
+async function exportJSON() {
+  try {
+    const response = await sendToWorker('GET_FULL_VIEW', {}, true);
+    const view = response.data;
+    const blob = new Blob([JSON.stringify(view, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'logsieve-data.json';
+    a.click();
+  } catch (error) {
+    console.error('Export JSON failed:', error);
+    alert('Failed to export JSON: ' + error.message);
+  }
 }
 
 /**
  * Export current view as CSV file
  */
-function exportCSV() {
-  const sortedFields = [...fieldNames].sort();
-  const header = ['id', 'ts', 'level', 'message', ...sortedFields];
-  const lines = [header.join(',')];
+async function exportCSV() {
+  try {
+    const response = await sendToWorker('GET_FULL_VIEW', {}, true);
+    const view = response.data;
+    const sortedFields = [...fieldNames].sort();
+    const header = ['id', 'ts', 'level', 'message', ...sortedFields];
+    const lines = [header.join(',')];
 
-  for (const r of view) {
-    const baseFields = [
-      r.id,
-      r.ts || '',
-      r.level || '',
-      (r.message || '').replaceAll('"', '""')
-    ];
-    
-    // Add extracted fields - format arrays as JSON strings
-    const extractedFields = sortedFields.map(fieldName => {
-      const val = r.fields?.[fieldName];
-      if (!val) return '';
-      if (Array.isArray(val)) {
-        if (val.length === 1) return val[0];
-        return JSON.stringify(val);
-      }
-      return String(val);
-    });
-    
-    // Build CSV row with proper quoting
-    const csvRow = [
-      baseFields[0], // id
-      baseFields[1], // ts
-      baseFields[2], // level
-      `"${baseFields[3]}"`, // message (quoted)
-      ...extractedFields.map(f => `"${String(f).replaceAll('"', '""')}"`)
-    ].join(',');
-    
-    lines.push(csvRow);
+    for (const r of view) {
+      const baseFields = [
+        r.id,
+        r.ts || '',
+        r.level || '',
+        (r.message || '').replaceAll('"', '""')
+      ];
+      
+      // Add extracted fields - format arrays as JSON strings
+      const extractedFields = sortedFields.map(fieldName => {
+        const val = r.fields?.[fieldName];
+        if (!val) return '';
+        if (Array.isArray(val)) {
+          if (val.length === 1) return val[0];
+          return JSON.stringify(val);
+        }
+        return String(val);
+      });
+      
+      // Build CSV row with proper quoting
+      const csvRow = [
+        baseFields[0], // id
+        baseFields[1], // ts
+        baseFields[2], // level
+        `"${baseFields[3]}"`, // message (quoted)
+        ...extractedFields.map(f => `"${String(f).replaceAll('"', '""')}"`)
+      ].join(',');
+      
+      lines.push(csvRow);
+    }
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'logsieve-data.csv';
+    a.click();
+  } catch (error) {
+    console.error('Export CSV failed:', error);
+    alert('Failed to export CSV: ' + error.message);
   }
-
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'logsieve-data.csv';
-  a.click();
 }
 
 /**
@@ -1825,6 +1741,11 @@ function handleApplyFilter(e) {
   
   if (!filter) return;
 
+  // Show progress
+  $("#savedFilterProgress").style.display = 'block';
+  $("#savedFilterProgressFill").style.width = '0%';
+  $("#savedFilterProgressText").textContent = 'Applying saved filter...';
+
   // Apply saved filter settings to UI
   $("#textQuery").value = filter.advancedQuery || filter.quickSearch || filter.query || '';
   $("#sort").value = filter.sort || 'id';
@@ -1861,7 +1782,7 @@ function handleApplyFilter(e) {
   } else {
     appliedAdvancedQuery = null;
   }
-  applyFilters();
+  applyFilters('saved-filtering');
 }
 
 /**
@@ -2368,30 +2289,59 @@ function closeMobileSidebar() {
  */
 function initializeEventHandlers() {
   // Filter controls
-  ["sort", "order", "per"].forEach(id =>
+  ["sort", "order"].forEach(id =>
     $("#" + id).addEventListener('change', applyFilters)
   );
 
+  // Page size dropdown - update per variable and apply filters
+  $("#per").addEventListener('change', () => {
+    per = +$("#per").value;
+    page = 1; // Reset to first page when changing page size
+    applyFilters();
+  });
+
   // Also ensure changing filter inputs will cancel any active v2 structured filter (unless builder is open)
-  ["sort", "order", "per"].forEach(id => {
+  ["sort", "order"].forEach(id => {
     const el = $("#" + id);
     if (!el) return;
     el.addEventListener('input', () => { if (!builderOpen) currentFilterConfig = null; });
   });
 
   // Action buttons
-  $("#apply").addEventListener('click', e => {
+  $("#apply").addEventListener('click', async e => {
     e.preventDefault();
     // Apply: copy current builder rules to appliedFilterConfig
     appliedFilterConfig = currentFilterConfig ? JSON.parse(JSON.stringify(currentFilterConfig)) : null;
-    // Parse advanced query and set appliedAdvancedQuery, but don't auto-copy into builder
-    const adv = parseAdvancedQuery();
-    if (adv) {
-      appliedAdvancedQuery = adv;
-      $('#queryError').textContent = '';
+    
+    // Show progress
+    $("#filterProgress").style.display = 'block';
+    $("#filterProgressFill").style.width = '0%';
+    $("#filterProgressText").textContent = 'Applying filters...';
+    
+    // Parse advanced query using worker
+    const queryText = $("#textQuery").value.trim();
+    if (queryText) {
+      try {
+        const response = await sendToWorker('PARSE_ADVANCED_QUERY', { queryText }, true);
+        if (response.data.success) {
+          appliedAdvancedQuery = response.data.result;
+          $('#queryError').textContent = '';
+        } else {
+          appliedAdvancedQuery = null;
+          $('#queryError').textContent = 'Query parse error: ' + response.data.error;
+          $("#filterProgress").style.display = 'none';
+          return; // Don't apply filters if query parsing failed
+        }
+      } catch (error) {
+        appliedAdvancedQuery = null;
+        $('#queryError').textContent = 'Query parse error: ' + error.message;
+        $("#filterProgress").style.display = 'none';
+        return;
+      }
     } else {
       appliedAdvancedQuery = null;
     }
+    
     applyFilters();
   });
 
@@ -2424,17 +2374,11 @@ function initializeEventHandlers() {
   if (textQueryInput) {
     let parseTimer = null;
     textQueryInput.addEventListener('input', (e) => {
-        // Validate query client-side but do not apply until user clicks Apply
-        const v = e.target.value;
+        // Clear previous validation timeout
         clearTimeout(parseTimer);
+        // For now, just clear any previous error - full validation happens on Apply
         parseTimer = setTimeout(() => {
-          try {
-            const parser = new QueryParser(v);
-            parser.parse();
-            $('#queryError').textContent = '';
-          } catch (err) {
-            $('#queryError').textContent = 'Query parse error: ' + (err.message || err);
-          }
+          $('#queryError').textContent = '';
         }, 200);
       });
     
@@ -2468,7 +2412,7 @@ function initializeEventHandlers() {
   });
 
   $("#next").addEventListener('click', () => {
-    const max = Math.max(1, Math.ceil(view.length / per));
+    const max = Math.max(1, Math.ceil(totalRows / per));
     if (page < max) {
       page++;
       render();
@@ -2476,7 +2420,7 @@ function initializeEventHandlers() {
   });
 
   $("#last").addEventListener('click', () => {
-    const max = Math.max(1, Math.ceil(view.length / per));
+    const max = Math.max(1, Math.ceil(totalRows / per));
     if (page < max) {
       page = max;
       render();
@@ -2601,6 +2545,13 @@ function initializeSettings() {
   if (mergeStrategySelect) {
     mergeStrategySelect.value = prefs.extractorMergeStrategy || 'last-wins';
   }
+
+  // Initialize page size from preferences
+  per = prefs.defaultPageSize || 50;
+  const perSelect = $("#per");
+  if (perSelect) {
+    perSelect.value = per;
+  }
 }
 
 // ---------- Theme Toggle ----------
@@ -2669,10 +2620,12 @@ function initializeThemeToggle() {
 // Initialize when DOM is loaded
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
+    initWorker();
     initializeEventHandlers();
     initializeThemeToggle();
   });
 } else {
+  initWorker();
   initializeEventHandlers();
   initializeThemeToggle();
 }

@@ -218,6 +218,12 @@
               Drag & drop a .log/.txt file here, or <button class="btn" id="pick">Browse…</button>
               <input type="file" id="file" accept=".log,.txt,.json,.ndjson" hidden />
             </div>
+            <div id="uploadProgress" class="progress-container" style="display:none;">
+              <div class="progress-bar">
+                <div class="progress-fill" id="uploadProgressFill"></div>
+              </div>
+              <div class="progress-text" id="uploadProgressText">Parsing...</div>
+            </div>
           </div>
         </div>
       </section>
@@ -276,6 +282,12 @@
                 </select>
               </label>
             </div>
+            <div id="filterProgress" class="progress-container" style="display:none;">
+              <div class="progress-bar">
+                <div class="progress-fill" id="filterProgressFill"></div>
+              </div>
+              <div class="progress-text" id="filterProgressText">Applying filters...</div>
+            </div>
             <div class="flex" style="margin-top:18px">
               <button class="btn" id="apply">Apply</button>
               <button class="btn ghost" id="clear">Clear filters</button>
@@ -302,6 +314,12 @@
                 </select>
               </label>
               <span class="right pill" id="extractInfo">—</span>
+            </div>
+            <div id="extractorProgress" class="progress-container" style="display:none;">
+              <div class="progress-bar">
+                <div class="progress-fill" id="extractorProgressFill"></div>
+              </div>
+              <div class="progress-text" id="extractorProgressText">Running extractors...</div>
             </div>
             
             <div class="controls" style="margin-bottom:10px">
@@ -348,6 +366,13 @@
             <div class="flex" style="margin-bottom:10px">
               <button class="btn" id="saveCurrentFilter" title="Save the current filter settings as a preset">💾 Save Current Filter</button>
               <span class="right pill" id="filterLibInfo">—</span>
+            </div>
+            
+            <div id="savedFilterProgress" class="progress-container" style="display:none;">
+              <div class="progress-bar">
+                <div class="progress-fill" id="savedFilterProgressFill"></div>
+              </div>
+              <div class="progress-text" id="savedFilterProgressText">Applying saved filter...</div>
             </div>
             
             <div id="filterList" class="library-list">
