@@ -2563,7 +2563,7 @@ function initializeTheme() {
   const savedTheme = localStorage.getItem('logsieve-theme');
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   
-  // Use saved theme, or fall back to system preference (default to dark)
+  // Use saved theme, or fall back to system preference (default to light)
   const isDark = savedTheme ? savedTheme === 'dark' : prefersDark;
   
   setTheme(isDark ? 'dark' : 'light');
@@ -2579,11 +2579,11 @@ function setTheme(theme) {
   const themeIconSmall = $('#themeToggleSmall .theme-icon');
   
   if (theme === 'light') {
-    root.classList.add('light-theme');
+    root.classList.remove('dark-theme');
     themeIcon.textContent = '☀️';
     if (themeIconSmall) themeIconSmall.textContent = '☀️';
   } else {
-    root.classList.remove('light-theme');
+    root.classList.add('dark-theme');
     themeIcon.textContent = '🌙';
     if (themeIconSmall) themeIconSmall.textContent = '🌙';
   }
@@ -2596,8 +2596,8 @@ function setTheme(theme) {
  * Toggle between light and dark themes
  */
 function toggleTheme() {
-  const isLight = document.documentElement.classList.contains('light-theme');
-  setTheme(isLight ? 'dark' : 'light');
+  const isDark = document.documentElement.classList.contains('dark-theme');
+  setTheme(isDark ? 'light' : 'dark');
 }
 
 /**
