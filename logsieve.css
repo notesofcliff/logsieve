@@ -1071,6 +1071,47 @@ canvas {
   text-overflow: ellipsis;
 }
 
+/* Mobile Sidebar Overlay */
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px; /* Hidden off-screen by default */
+    height: 100vh;
+    width: 280px;
+    z-index: 2001;
+    transition: left 0.3s ease;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+  }
+  
+  .sidebar.open {
+    left: 0;
+  }
+  
+  /* Overlay backdrop */
+  .sidebar::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: -1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+  
+  .sidebar.open::before {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  
+  /* Show close button within the slide-out sidebar on mobile */
+  .close-sidebar { display: inline-flex; }
+}
+
 /* Main Content Area */
 .main-content {
   flex: 1;
