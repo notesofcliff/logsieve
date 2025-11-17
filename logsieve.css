@@ -6,12 +6,12 @@
   --panel: #ffffff;
   --muted: #6b7280;
   --ink: #111827;
-  --accent: #6366f1;
+  --accent: #3b82f6;
   --accent2: #f59e0b;
   --ok: #10b981;
   --warn: #f59e0b;
   --err: #ef4444;
-  --ring: rgba(99, 102, 241, 0.2);
+  --ring: rgba(59, 130, 246, 0.2);
   --border: #e5e7eb;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
@@ -371,7 +371,7 @@ textarea:focus {
 }
 
 .drop.drag {
-  background: rgba(99, 102, 241, .08);
+  background: rgba(59, 130, 246, .08);
   border-color: var(--accent);
 }
 
@@ -741,7 +741,7 @@ canvas {
 }
 
 .collapsible-header:hover {
-  background: rgba(99, 102, 241, .08);
+  background: rgba(59, 130, 246, .08);
 }
 
 .collapse-icon {
@@ -1078,12 +1078,12 @@ canvas {
 }
 
 .nav-link:hover {
-  background: rgba(99, 102, 241, .08);
+  background: rgba(59, 130, 246, .08);
   color: var(--ink);
 }
 
 .nav-link.active {
-  background: rgba(99, 102, 241, .12);
+  background: rgba(59, 130, 246, .12);
   color: var(--accent);
   border-left-color: var(--accent);
   font-weight: 500;
@@ -1173,7 +1173,7 @@ canvas {
   font-size: 0.875rem;
   letter-spacing: .02em;
   color: var(--ink);
-  background: rgba(99, 102, 241, .08);
+  background: rgba(59, 130, 246, .08);
   border-bottom: 1px solid var(--border);
   cursor: pointer;
   user-select: none;
@@ -1188,7 +1188,7 @@ canvas {
 }
 
 .section-header:hover {
-  background: rgba(99, 102, 241, .15);
+  background: rgba(59, 130, 246, .15);
 }
 
 .section-icon {
