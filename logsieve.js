@@ -2195,26 +2195,12 @@ function navigateToSection(sectionId, tab) {
     }
   });
   
-  // Update nav links
-  const navLinks = document.querySelectorAll('.nav-link');
-  navLinks.forEach(link => {
-    if (link.dataset.section === sectionId) {
-      // If caller provided a specific tab, only highlight the nav link that matches both
-      if (tab) {
-        link.classList.toggle('active', link.dataset.tab === tab);
-      } else {
-        link.classList.add('active');
-      }
-    } else {
-      link.classList.remove('active');
-    }
-  });
+  // No sidebar nav links to toggle — sections are navigable via headers and Search Tools
   
   // Scroll to section
   targetSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
   
-  // Close mobile sidebar if open
-  closeMobileSidebar();
+  // Sidebar removed — no-op
 }
 
 /**
@@ -2248,73 +2234,7 @@ function toggleSection(header) {
 /**
  * Initialize sidebar navigation
  */
-function initializeSidebar() {
-  // Handle nav link clicks
-  document.querySelectorAll('.nav-link').forEach(link => {
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      const sectionId = link.dataset.section;
-      const tab = link.dataset.tab;
-  navigateToSection(sectionId, tab);
-      // If this is a Search Tools nav that asks for a specific tab, open it
-      if (sectionId === 'search' && tab) {
-        showSearchTab(tab);
-      }
-    });
-  });
-  
-  // Handle section header clicks
-  document.querySelectorAll('.section-header').forEach(header => {
-    header.addEventListener('click', () => {
-      toggleSection(header);
-    });
-  });
-  
-  // Hamburger menu toggle
-  const hamburger = $('#hamburgerMenu');
-  if (hamburger) {
-    hamburger.addEventListener('click', toggleMobileSidebar);
-  }
-
-  // Sidebar close button (mobile)
-  const closeSidebarBtn = $('#closeSidebar');
-  if (closeSidebarBtn) {
-    closeSidebarBtn.addEventListener('click', (e) => {
-      // If mobile, use existing mobile close behavior
-      if (window.matchMedia('(max-width: 900px)').matches) {
-        closeMobileSidebar();
-      } else {
-        // Desktop: collapse sidebar by toggling a class on body
-        document.body.classList.toggle('sidebar-collapsed');
-      }
-    });
-  }
-  
-  // Close sidebar when clicking overlay
-  document.addEventListener('click', (e) => {
-    if (document.body.classList.contains('sidebar-open')) {
-      const sidebar = $('#sidebar');
-      const hamburger = $('#hamburgerMenu');
-      if (!sidebar.contains(e.target) && !hamburger.contains(e.target)) {
-        closeMobileSidebar();
-      }
-    }
-  });
-  
-  // Set initial state - default to upload section if no section is already active
-  const hasActiveSection = document.querySelector('.section-card.active');
-  if (!hasActiveSection) {
-    const uploadSection = document.getElementById('section-upload');
-    if (uploadSection) {
-      uploadSection.classList.add('active');
-      // Update nav link to match
-      const uploadNavLink = document.querySelector('.nav-link[data-section="upload"]');
-      if (uploadNavLink) {
-        uploadNavLink.classList.add('active');
-      }
-    }
-  }
-}
+// Sidebar removed — initializeSidebar is no longer needed; section headers now trigger toggles via initializeEventHandlers
 
 /**
  * Show a specific tab inside the Search Tools collapsible
@@ -2332,30 +2252,7 @@ function showSearchTab(tab) {
 /**
  * Toggle mobile sidebar visibility
  */
-function toggleMobileSidebar() {
-  const sidebar = $('#sidebar');
-  const body = document.body;
-  // If the sidebar was collapsed on desktop, un-collapse it (re-open)
-  if (body.classList.contains('sidebar-collapsed')) {
-    body.classList.remove('sidebar-collapsed');
-    return;
-  }
-
-  // Default mobile toggle behavior: slide in/out
-  sidebar.classList.toggle('open');
-  body.classList.toggle('sidebar-open');
-}
-
-/**
- * Close mobile sidebar
- */
-function closeMobileSidebar() {
-  const sidebar = $('#sidebar');
-  const body = document.body;
-  
-  sidebar.classList.remove('open');
-  body.classList.remove('sidebar-open');
-}
+// Sidebar toggling/close functions removed — no mobile sidebar exists
 
 // ---------- Event Handlers ----------
 
@@ -2460,6 +2357,11 @@ function initializeEventHandlers() {
     // Clickable field name suggestions
     renderQueryFields();
   }
+
+    // Section header toggle behavior (search, filters, upload, etc.) — now bound without a sidebar
+    document.querySelectorAll('.section-header').forEach(header => {
+      header.addEventListener('click', () => toggleSection(header));
+    });
 
   $("#clear").addEventListener('click', e => {
     e.preventDefault();
@@ -2656,7 +2558,7 @@ function initializeEventHandlers() {
   if (info) info.textContent = `Timestamps are displayed in your local timezone (${userTimeZone}). Naive timestamps are treated as local; UTC/Zulu timestamps are converted to your timezone.`;
   initializeCollapsibles();
   initializeSettings();
-  initializeSidebar();
+  // Sidebar removed — use section header clicks and Search Tools tabs for navigation
   // Move previously top-level Help/Filters/Extractors into the Search Tools tabbed panel
   moveSearchContentIntoTabs();
 }

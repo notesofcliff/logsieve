@@ -323,26 +323,10 @@ textarea:focus {
   line-height: 1;
 }
 
-/* Hamburger Menu Button */
-.hamburger-menu {
-  min-width: 2.75rem;
-  padding: 0.625rem;
-  display: none;
-}
-
-.hamburger-icon {
-  font-size: 1.25rem;
-  line-height: 1;
-}
+/* Hamburger menu deprecated — removed in layout (no sidebar) */
 
 @media (max-width: 900px) {
-  .hamburger-menu {
-    display: inline-flex;
-    position: fixed;
-    top: 0.5rem;
-    left: 0.5rem;
-    z-index: 2002;
-  }
+  /* Hamburger removed */
 
   /* Keep the theme toggle hidden by default; show next to hamburger on small screens */
   .small-theme { display: inline-flex; margin-left: 48px; }
@@ -1062,110 +1046,10 @@ canvas {
   border: 1px solid var(--border);
 }
 
-/* Sidebar Navigation */
-.sidebar {
-  width: 250px;
-  background: var(--panel);
-  position: relative; /* allow absolute child button */
-  border-right: 1px solid var(--border);
-}
-
-.close-sidebar {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  display: inline-flex; /* visible on all sizes */
-}
-
-:root.dark-theme .sidebar {
-  border-right: 1px solid var(--border);
-}
-
-.sidebar-nav {
-  display: flex;
-  flex-direction: column;
-  padding: 1rem 0;
-}
-
-.nav-link {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.875rem 1.25rem;
-  color: var(--muted);
-  text-decoration: none;
-  transition: all 0.2s ease;
-  border-left: 3px solid transparent;
-  font-size: 0.9375rem;
-}
-
-.nav-link:hover {
-  background: rgba(59, 130, 246, .08);
-  color: var(--ink);
-}
-
-.nav-link.active {
-  background: rgba(59, 130, 246, .12);
-  color: var(--accent);
-  border-left-color: var(--accent);
-  font-weight: 500;
-}
-
-.nav-icon {
-  font-size: 1.125rem;
-  line-height: 1;
-  flex-shrink: 0;
-}
-
-.nav-text {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+/* Sidebar and nav-link removed */
 
 /* Mobile Sidebar Overlay */
-@media (max-width: 900px) {
-  .sidebar {
-    position: fixed;
-    top: 0;
-    left: -280px; /* Hidden off-screen by default */
-    height: 100vh;
-    width: 280px;
-    z-index: 2001;
-    transition: left 0.3s ease;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
-    background: var(--panel);
-    border-right: 1px solid var(--border);
-  }
-  
-  .sidebar.open {
-    left: 0;
-  }
-  
-  /* Overlay backdrop */
-  .sidebar::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    /* background: rgba(0, 0, 0, 0.5); */
-    z-index: -1;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-    pointer-events: none;
-  }
-  
-  .sidebar.open::before {
-    opacity: 1;
-    pointer-events: auto;
-  }
-  
-  /* Show close button within the slide-out sidebar on mobile */
-  .close-sidebar { display: inline-flex; }
-}
+/* Mobile sidebar overlay rules removed */
 
 /* Main Content Area */
 .main-content {
@@ -1338,28 +1222,5 @@ canvas {
     width: 100%;
   }
   
-  .sidebar {
-    width: 280px;
-  }
-    
-    /* Show close button within the slide-out sidebar on mobile */
-    .close-sidebar { display: inline-flex; }
+/* Sidebar completely removed; no desktop collapsed state needed */
 }
-
-  @media (min-width: 900px) {
-    /* When the user hides the sidebar on desktop, expand the main area */
-    body.sidebar-collapsed .grid {
-      grid-template-columns: 1fr;
-    }
-    body.sidebar-collapsed .sidebar {
-      display: none;
-    }
-      /* When collapsed, provide a way to reopen via the hamburger on desktop */
-      body.sidebar-collapsed .hamburger-menu {
-        display: inline-flex;
-        position: fixed;
-        top: 0.5rem;
-        left: 0.5rem;
-        z-index: 2002;
-      }
-  }

@@ -9,9 +9,7 @@
 <body>
   <header>
     <div class="header-top">
-      <button class="btn hamburger-menu" id="hamburgerMenu" title="Toggle menu">
-        <span class="hamburger-icon">☰</span>
-      </button>
+      <!-- sidebar/hamburger removed: simplified header (no sidebar) -->
       <button class="btn theme-toggle small-theme" id="themeToggleSmall" title="Toggle theme">
         <span class="theme-icon">☀️</span>
       </button>
@@ -36,33 +34,7 @@
   </header>
 
   <div class="app-container">
-    <!-- Sidebar Navigation -->
-    <aside class="sidebar" id="sidebar">
-      <button class="btn ghost close-sidebar" id="closeSidebar" title="Close menu">✕</button>
-      <nav class="sidebar-nav">
-  <a href="#section-search" class="nav-link" data-section="search" data-tab="help">
-          <span class="nav-icon">❓</span>
-          <span class="nav-text">Help</span>
-        </a>
-        <a href="#section-upload" class="nav-link active" data-section="upload">
-          <span class="nav-icon">📁</span>
-          <span class="nav-text">Upload</span>
-        </a>
-  <a href="#section-search" class="nav-link" data-section="search" data-tab="filters">
-          <span class="nav-icon">🔍</span>
-          <span class="nav-text">Filters & Sort</span>
-        </a>
-  <a href="#section-search" class="nav-link" data-section="search" data-tab="extractors">
-          <span class="nav-icon">📚</span>
-          <span class="nav-text">Extractor Library</span>
-        </a>
-        
-        <a href="#section-results" class="nav-link" data-section="results">
-          <span class="nav-icon">📋</span>
-          <span class="nav-text">Results</span>
-        </a>
-      </nav>
-    </aside>
+    <!-- Sidebar removed — navigation is now performed via section headers and Search Tools tabs -->
 
     <main class="main-content">
       <!-- Upload Section (moved to top) -->
@@ -97,7 +69,7 @@
           <div class="pad">
             <div style="font-size:13px; line-height:1.6; color:var(--muted)">
               <h3 style="margin-top:0; font-size:15px; color:var(--ink)">Getting Started</h3>
-              <p>LogSieve is a powerful log analysis tool that runs entirely in your browser. Use the sidebar to navigate between sections, and click section headers to expand/collapse them. The Results section is always visible so you can see your data while working.</p>
+              <p>LogSieve is a powerful log analysis tool that runs entirely in your browser. Use the section headers or Search Tools tabs to navigate between sections, and click section headers to expand/collapse them. The Results section is always visible so you can see your data while working.</p>
               
               <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">📁 Upload</h3>
               <p>Load your log files to start analyzing. LogSieve supports multiple formats:</p>

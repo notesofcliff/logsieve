@@ -62,11 +62,12 @@ Traditional log analysis often involves switching between multiple command-line 
 
 ## Architecture
 
-LogSieve consists of three main files:
+LogSieve consists of four main files:
 
-- **`index.html`** - Main HTML structure and UI elements
-- **`logsieve.css`** - Styling and visual design
-- **`logsieve.js`** - Core functionality and log processing logic
+- **`index.html`**: Main HTML structure and UI elements
+- **`logsieve.css`**: Styling and visual design
+- **`logsieve.js`**: Core functionality and log processing logic
+- **`logsieve-worker.js`**: Worker specific code
 
 The application uses vanilla JavaScript with no external dependencies. Recent enhancements include:
 
@@ -273,8 +274,8 @@ All log processing happens client-side, so user data never leaves their machine.
 - ✅ Import/export library functionality
  - ✅ UI: Upload first and collapsible Search Tools with tabbed panels
   - Upload panel moved to top and collapsible. After file parsing completes, Upload automatically collapses so Results are visible.
-  - Help, Filters & Sort, and Extractor Library are now tabs inside a single collapsible "Search Tools" panel (collapsed by default). Clicking the sidebar links opens the Search Tools panel and selects the requested tab.
-  - When the user expands Search Tools, the default tab shown is now "Filters & Sort" (previously Help). Sidebar nav links can still target a specific tab.
+  - Help, Filters & Sort, and Extractor Library are now tabs inside a single collapsible "Search Tools" panel (collapsed by default). Click the Search Tools tabs or section headers to open the relevant panel.
+  - When the user expands Search Tools, the default tab shown is now "Filters & Sort" (previously Help).
 
 ### Planned Enhancements
 - Chunked parsing for 100MB+ logs (via Web Workers)
