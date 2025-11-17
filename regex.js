@@ -175,34 +175,40 @@ $('#import').addEventListener('change', async (e)=>{
 
 // ===== Theme functionality =====
 function initializeTheme() {
-  const savedTheme = localStorage.getItem('regexlab-theme');
+  const savedTheme = localStorage.getItem('logsieve-theme');
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   
-  // Use saved theme, or fall back to system preference (default to dark)
+  // Use saved theme, or fall back to system preference
   const isDark = savedTheme ? savedTheme === 'dark' : prefersDark;
   
-  setTheme(isDark ? 'dark' : 'light');
+  setTheme(isDark);
 }
 
-function setTheme(theme) {
+function setTheme(isDark) {
   const root = document.documentElement;
-  const themeIcon = $('#themeToggle .theme-icon');
   
-  if (theme === 'light') {
-    root.classList.add('light-theme');
-    themeIcon.textContent = '☀️';
+  if (isDark) {
+    root.classList.add('dark-theme');
   } else {
-    root.classList.remove('light-theme');
-    themeIcon.textContent = '🌙';
+    root.classList.remove('dark-theme');
   }
   
   // Save preference
-  localStorage.setItem('regexlab-theme', theme);
+  localStorage.setItem('logsieve-theme', isDark ? 'dark' : 'light');
+  
+  updateThemeIcons();
+}
+
+function updateThemeIcons() {
+  const isDark = document.documentElement.classList.contains('dark-theme');
+  document.querySelectorAll('.theme-icon').forEach(icon => {
+    icon.textContent = isDark ? '☀️' : '🌙';
+  });
 }
 
 function toggleTheme() {
-  const isLight = document.documentElement.classList.contains('light-theme');
-  setTheme(isLight ? 'dark' : 'light');
+  const isDark = document.documentElement.classList.contains('dark-theme');
+  setTheme(!isDark);
 }
 
 function initializeThemeToggle() {

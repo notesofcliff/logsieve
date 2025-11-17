@@ -8,17 +8,19 @@
 </head>
 <body>
   <header>
-    <h1>RegexLab · single‑file</h1>
-    <div class="links" style="margin-bottom: 10px;">
+    <div class="header-top">
+      <h1>RegexLab · single‑file</h1>
+      <button class="btn theme-toggle" id="themeToggle" title="Toggle theme">
+        <span class="theme-icon">☀️</span>
+      </button>
+    </div>
+    <div class="header-links">
       <a class="tag" href="https://github.com/notesofcliff/logsieve" target="_blank">📦 Source Code</a>
       <a class="tag" href="https://github.com/sponsors/notesofcliff" target="_blank">💖 Sponsor</a>
       <a class="tag" href="https://github.com/notesofcliff/logsieve/issues" target="_blank">🐞 Report an Issue</a>
       <a class="tag" href="index.html">← Back to LogSieve</a>
     </div>
-    <div class="right flex">
-      <button class="btn theme-toggle" id="themeToggle" title="Toggle theme">
-        <span class="theme-icon">🌙</span>
-      </button>
+    <div class="header-actions">
       <button class="btn" id="share">Share pattern</button>
       <button class="btn" id="export">Export JSON</button>
       <label class="flag"><input type="file" id="import" hidden><span id="importBtn" style="cursor:pointer">Import</span></label>
@@ -26,56 +28,66 @@
   </header>
 
   <main class="grid">
-    <section class="card" style="grid-column:1/-1">
-      <h2>Pattern & Flags</h2>
-      <div class="pad">
-        <div class="row">
-          <input id="pattern" type="text" class="wide-input" placeholder="Enter regex, e.g. (?<user>\\w+)@(?<domain>[\\w.]+)" />
-        </div>
-        <div class="row" style="margin-top:8px">
-          <label class="flag"><input type="checkbox" id="f_i"> <span>i (ignore case)</span></label>
-          <label class="flag"><input type="checkbox" id="f_g" checked> <span>g (global)</span></label>
-          <label class="flag"><input type="checkbox" id="f_m"> <span>m (multiline ^ $)</span></label>
-          <label class="flag"><input type="checkbox" id="f_s"> <span>s (dotAll)</span></label>
-          <label class="flag"><input type="checkbox" id="f_u" checked> <span>u (unicode)</span></label>
-          <span class="pill" id="flagsView">/…/gi</span>
-        </div>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>Test Text</h2>
-      <div class="pad">
-        <textarea id="text" rows="14" placeholder="Paste sample text here…"></textarea>
-        <div style="margin-top:8px" class="row">
-          <button class="btn" id="sample">Load sample</button>
-          <span class="muted">Highlights update as you type.</span>
+    <section class="section-card always-visible" style="grid-column:1/-1">
+      <h2 class="section-header">Pattern & Flags</h2>
+      <div class="section-content">
+        <div class="pad">
+          <div class="row">
+            <input id="pattern" type="text" class="wide-input" placeholder="Enter regex, e.g. (?<user>\\w+)@(?<domain>[\\w.]+)" />
+          </div>
+          <div class="row" style="margin-top:8px">
+            <label class="flag"><input type="checkbox" id="f_i"> <span>i (ignore case)</span></label>
+            <label class="flag"><input type="checkbox" id="f_g" checked> <span>g (global)</span></label>
+            <label class="flag"><input type="checkbox" id="f_m"> <span>m (multiline ^ $)</span></label>
+            <label class="flag"><input type="checkbox" id="f_s"> <span>s (dotAll)</span></label>
+            <label class="flag"><input type="checkbox" id="f_u" checked> <span>u (unicode)</span></label>
+            <span class="pill" id="flagsView">/…/gi</span>
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="card">
-      <h2>Groups & Tokens</h2>
-      <div class="pad">
-        <div class="groups" id="groups"></div>
-        <div class="explainer" id="explainer" style="margin-top:12px"></div>
-      </div>
-    </section>
-
-    <section class="card" style="grid-column:1/-1">
-      <h2>Summary</h2>
-      <div class="pad">
-        <div class="tags">
-          <span class="tag" id="matchCount">0 matches</span>
-          <span class="tag" id="errorMsg" style="display:none"></span>
+    <section class="section-card always-visible">
+      <h2 class="section-header">Test Text</h2>
+      <div class="section-content">
+        <div class="pad">
+          <textarea id="text" rows="14" placeholder="Paste sample text here…"></textarea>
+          <div style="margin-top:8px" class="row">
+            <button class="btn" id="sample">Load sample</button>
+            <span class="muted">Highlights update as you type.</span>
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="card" style="grid-column:1/-1">
-      <h2>Matches</h2>
-      <div class="pad">
-        <div id="output" class="out"></div>
+    <section class="section-card always-visible">
+      <h2 class="section-header">Groups & Tokens</h2>
+      <div class="section-content">
+        <div class="pad">
+          <div class="groups" id="groups"></div>
+          <div class="explainer" id="explainer" style="margin-top:12px"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-card always-visible" style="grid-column:1/-1">
+      <h2 class="section-header">Summary</h2>
+      <div class="section-content">
+        <div class="pad">
+          <div class="tags">
+            <span class="tag" id="matchCount">0 matches</span>
+            <span class="tag" id="errorMsg" style="display:none"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section-card always-visible" style="grid-column:1/-1">
+      <h2 class="section-header">Matches</h2>
+      <div class="section-content">
+        <div class="pad">
+          <div id="output" class="out"></div>
+        </div>
       </div>
     </section>
   </main>
