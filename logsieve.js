@@ -943,7 +943,7 @@ function renderPage(pageData) {
   const sortedFields = [...fieldNames].sort();
   theadRow.innerHTML = `
     <th style="width:72px">ID</th>
-  <th style="width:210px">Timestamp (<span id="tzLabel">${escapeHtml(userTimeZone)}</span>)</th>
+  <th style="width:210px">Timestamp <br/>(<span id="tzLabel">${escapeHtml(userTimeZone)}</span>)</th>
     <th style="width:120px">Level</th>
     <th style="max-width:80ch">Message</th>
     ${sortedFields.map(f => `<th style="width:150px">${escapeHtml(f)}</th>`).join('')}
