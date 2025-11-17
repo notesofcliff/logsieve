@@ -545,6 +545,11 @@ function handleWorkerMessage(e) {
       FieldRegistry.updateFromDataset(rows);
       $("#info").textContent = `Parsed ${fmt(rows.length)} entries`;
       $("#uploadProgress").style.display = 'none';
+  // After parsing completes and results are displayed, collapse the Upload section and open Results
+  const uploadSection = document.getElementById('section-upload');
+  if (uploadSection) uploadSection.classList.remove('active');
+  // Set Results nav active for clarity
+  navigateToSection('results');
       applyFilters();
       break;
 
@@ -1549,6 +1554,47 @@ function renderFilterList() {
   container.querySelectorAll('.delete-filter').forEach(btn => {
     btn.addEventListener('click', handleDeleteFilter);
   });
+
+  // Keep the saved filter dropdown updated with latest list
+  populateSavedFilterDropdown();
+}
+
+/**
+ * Populate the Saved Filters <select> dropdown in Filters & Sort
+ */
+function populateSavedFilterDropdown() {
+  const select = $('#savedFilterSelect');
+  if (!select) return;
+  const filters = Storage.getFilters();
+  const options = ['<option value="">-- Select saved filter --</option>'];
+  filters.forEach(f => options.push(`<option value="${f.id}">${escapeHtml(f.name)}</option>`));
+  select.innerHTML = options.join('');
+}
+
+/**
+ * Load a saved filter into the Filters & Sort UI without applying it
+ * @param {Object} filter
+ */
+function loadFilterIntoUI(filter) {
+  if (!filter) return;
+
+  // Populate Advanced Query and sort fields
+  $("#textQuery").value = filter.advancedQuery || filter.quickSearch || filter.query || '';
+  $("#sort").value = filter.sort || 'id';
+  $("#order").value = filter.order || 'desc';
+
+  // If v2 format, set builder rules and render
+  if (filter.version === 2) {
+    currentFilterConfig = { version: 2, rules: JSON.parse(JSON.stringify(filter.rules || [])), quickSearch: filter.quickSearch || '' };
+    renderBuilderUI();
+    // ensure builder is visible so rules appear to the user
+    const b = $("#filterBuilder");
+    if (b) { b.style.display = 'block'; builderOpen = true; }
+  } else {
+    currentFilterConfig = null;
+    renderBuilderUI();
+  }
+  updateFilterTag();
 }
 
 /**
@@ -2109,6 +2155,7 @@ function updateExtractorInfo() {
 function updateFilterLibInfo() {
   const totalFilters = Storage.getFilters().length;
   $("#filterLibInfo").textContent = `${totalFilters} saved`;
+  populateSavedFilterDropdown();
 }
 
 /**
@@ -2132,7 +2179,7 @@ function initializeCollapsibles() {
  * Navigate to a specific section
  * @param {string} sectionId - ID of section to navigate to
  */
-function navigateToSection(sectionId) {
+function navigateToSection(sectionId, tab) {
   // Get all sections except always-visible ones
   const sections = document.querySelectorAll('.section-card:not(.always-visible)');
   const targetSection = document.getElementById(`section-${sectionId}`);
@@ -2152,7 +2199,12 @@ function navigateToSection(sectionId) {
   const navLinks = document.querySelectorAll('.nav-link');
   navLinks.forEach(link => {
     if (link.dataset.section === sectionId) {
-      link.classList.add('active');
+      // If caller provided a specific tab, only highlight the nav link that matches both
+      if (tab) {
+        link.classList.toggle('active', link.dataset.tab === tab);
+      } else {
+        link.classList.add('active');
+      }
     } else {
       link.classList.remove('active');
     }
@@ -2184,7 +2236,12 @@ function toggleSection(header) {
     section.classList.remove('active');
   } else {
     // Navigate to this section (will collapse others)
-    navigateToSection(sectionId);
+    // If user is opening the Search Tools collapsible, default to Filters tab
+    if (sectionId === 'search') {
+      navigateToSection(sectionId, 'filters');
+    } else {
+      navigateToSection(sectionId);
+    }
   }
 }
 
@@ -2197,7 +2254,12 @@ function initializeSidebar() {
     link.addEventListener('click', (e) => {
       e.preventDefault();
       const sectionId = link.dataset.section;
-      navigateToSection(sectionId);
+      const tab = link.dataset.tab;
+  navigateToSection(sectionId, tab);
+      // If this is a Search Tools nav that asks for a specific tab, open it
+      if (sectionId === 'search' && tab) {
+        showSearchTab(tab);
+      }
     });
   });
   
@@ -2252,6 +2314,19 @@ function initializeSidebar() {
       }
     }
   }
+}
+
+/**
+ * Show a specific tab inside the Search Tools collapsible
+ * @param {string} tab - 'help' | 'filters' | 'extractors'
+ */
+function showSearchTab(tab) {
+  const t = tab || 'help';
+  const allBtns = document.querySelectorAll('.tab-btn');
+  allBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+
+  const panels = document.querySelectorAll('.tab-panel');
+  panels.forEach(p => p.style.display = (p.id === 'tab-' + t) ? '' : 'none');
 }
 
 /**
@@ -2516,6 +2591,56 @@ function initializeEventHandlers() {
     Storage.savePrefs(prefs);
   });
 
+  // Saved Filters dropdown actions
+  const sfSelect = $('#savedFilterSelect');
+  if (sfSelect) {
+    sfSelect.addEventListener('change', (e) => {
+      // Selecting does not auto-apply — it only populates the Filters & Sort fields
+      const id = e.target.value;
+      const filter = Storage.getFilters().find(f => f.id === id);
+      if (filter) loadFilterIntoUI(filter);
+    });
+  }
+
+  const loadSavedFilterBtn = $('#loadSavedFilter');
+  if (loadSavedFilterBtn) loadSavedFilterBtn.addEventListener('click', () => {
+    const id = $('#savedFilterSelect').value;
+    const filter = Storage.getFilters().find(f => f.id === id);
+    if (filter) loadFilterIntoUI(filter);
+  });
+
+  const applySavedFilterBtn = $('#applySavedFilter');
+  if (applySavedFilterBtn) applySavedFilterBtn.addEventListener('click', async () => {
+    const id = $('#savedFilterSelect').value;
+    const filter = Storage.getFilters().find(f => f.id === id);
+    if (filter) {
+      loadFilterIntoUI(filter);
+      // parse advanced query and apply
+      if ($('#textQuery').value.trim()) {
+        try {
+          const response = await sendToWorker('PARSE_ADVANCED_QUERY', { queryText: $('#textQuery').value.trim() }, true);
+          if (response.data.success) {
+            appliedAdvancedQuery = response.data.result;
+            $('#queryError').textContent = '';
+          } else {
+            appliedAdvancedQuery = null;
+            $('#queryError').textContent = 'Query parse error: ' + response.data.error;
+            return;
+          }
+        } catch (err) {
+          appliedAdvancedQuery = null;
+          $('#queryError').textContent = 'Query parse error: ' + err.message;
+          return;
+        }
+      } else {
+        appliedAdvancedQuery = null;
+      }
+      // mark filter as applied
+      appliedFilterConfig = currentFilterConfig ? JSON.parse(JSON.stringify(currentFilterConfig)) : null;
+      applyFilters('saved-filtering');
+    }
+  });
+
   // Initialize UI
   // Clean up active extractors on load (remove deleted/invalid IDs)
   const activeIds = Storage.getActiveExtractors();
@@ -2532,6 +2657,39 @@ function initializeEventHandlers() {
   initializeCollapsibles();
   initializeSettings();
   initializeSidebar();
+  // Move previously top-level Help/Filters/Extractors into the Search Tools tabbed panel
+  moveSearchContentIntoTabs();
+}
+
+/**
+ * Move the content of existing top-level sections into tab panels and remove originals
+ */
+function moveSearchContentIntoTabs() {
+  const names = ['help', 'filters', 'extractors'];
+  names.forEach(name => {
+    const old = document.getElementById(`section-${name}`);
+    const panel = document.getElementById(`tab-${name}`);
+    if (old && panel) {
+      const content = old.querySelector('.section-content');
+      if (content) {
+        // Move the existing DOM node so event listeners are preserved
+        panel.appendChild(content);
+      }
+      // Remove the old section node so it's not duplicated (content already moved)
+      if (old.parentNode) old.parentNode.removeChild(old);
+    }
+  });
+
+  // Init tab button behaviors
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const t = e.currentTarget.dataset.tab;
+      showSearchTab(t);
+    });
+  });
+
+  // Default open first tab (Filters & Sort) when Search Tools appears
+  showSearchTab('filters');
 }
 
 // ---------- Settings ----------

@@ -271,6 +271,10 @@ All log processing happens client-side, so user data never leaves their machine.
 - ✅ Saved filter presets
 - ✅ Multi-extractor support
 - ✅ Import/export library functionality
+ - ✅ UI: Upload first and collapsible Search Tools with tabbed panels
+  - Upload panel moved to top and collapsible. After file parsing completes, Upload automatically collapses so Results are visible.
+  - Help, Filters & Sort, and Extractor Library are now tabs inside a single collapsible "Search Tools" panel (collapsed by default). Clicking the sidebar links opens the Search Tools panel and selects the requested tab.
+  - When the user expands Search Tools, the default tab shown is now "Filters & Sort" (previously Help). Sidebar nav links can still target a specific tab.
 
 ### Planned Enhancements
 - Chunked parsing for 100MB+ logs (via Web Workers)

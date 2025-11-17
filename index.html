@@ -40,7 +40,7 @@
     <aside class="sidebar" id="sidebar">
       <button class="btn ghost close-sidebar" id="closeSidebar" title="Close menu">✕</button>
       <nav class="sidebar-nav">
-        <a href="#section-help" class="nav-link" data-section="help">
+  <a href="#section-search" class="nav-link" data-section="search" data-tab="help">
           <span class="nav-icon">❓</span>
           <span class="nav-text">Help</span>
         </a>
@@ -48,22 +48,15 @@
           <span class="nav-icon">📁</span>
           <span class="nav-text">Upload</span>
         </a>
-        <a href="#section-filters" class="nav-link" data-section="filters">
+  <a href="#section-search" class="nav-link" data-section="search" data-tab="filters">
           <span class="nav-icon">🔍</span>
           <span class="nav-text">Filters & Sort</span>
         </a>
-        <a href="#section-extractors" class="nav-link" data-section="extractors">
+  <a href="#section-search" class="nav-link" data-section="search" data-tab="extractors">
           <span class="nav-icon">📚</span>
           <span class="nav-text">Extractor Library</span>
         </a>
-        <a href="#section-saved-filters" class="nav-link" data-section="saved-filters">
-          <span class="nav-icon">🔖</span>
-          <span class="nav-text">Saved Filters</span>
-        </a>
-        <a href="#section-summary" class="nav-link" data-section="summary">
-          <span class="nav-icon">📊</span>
-          <span class="nav-text">Summary</span>
-        </a>
+        
         <a href="#section-results" class="nav-link" data-section="results">
           <span class="nav-icon">📋</span>
           <span class="nav-text">Results</span>
@@ -72,6 +65,28 @@
     </aside>
 
     <main class="main-content">
+      <!-- Upload Section (moved to top) -->
+      <section class="section-card active" id="section-upload" data-section="upload">
+        <h2 class="section-header">
+          <span class="section-icon">📁</span>
+          <span>Upload</span>
+        </h2>
+        <div class="section-content">
+          <div class="pad">
+            <div id="drop" class="drop">
+              Drag & drop a .log/.txt file here, or <button class="btn" id="pick">Browse…</button>
+              <input type="file" id="file" accept=".log,.txt,.json,.ndjson" hidden />
+            </div>
+            <div id="uploadProgress" class="progress-container" style="display:none;">
+              <div class="progress-bar">
+                <div class="progress-fill" id="uploadProgressFill"></div>
+              </div>
+              <div class="progress-text" id="uploadProgressText">Parsing...</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Help Section -->
       <section class="section-card" id="section-help" data-section="help">
         <h2 class="section-header">
@@ -206,27 +221,31 @@
         </div>
       </section>
 
-      <!-- Upload Section -->
-      <section class="section-card active" id="section-upload" data-section="upload">
+      <!-- Search Tools (tabs) - collapsed by default -->
+      <section class="section-card" id="section-search" data-section="search">
         <h2 class="section-header">
-          <span class="section-icon">📁</span>
-          <span>Upload</span>
+          <span class="section-icon">🔎</span>
+          <span>Search Tools</span>
         </h2>
         <div class="section-content">
           <div class="pad">
-            <div id="drop" class="drop">
-              Drag & drop a .log/.txt file here, or <button class="btn" id="pick">Browse…</button>
-              <input type="file" id="file" accept=".log,.txt,.json,.ndjson" hidden />
-            </div>
-            <div id="uploadProgress" class="progress-container" style="display:none;">
-              <div class="progress-bar">
-                <div class="progress-fill" id="uploadProgressFill"></div>
+            <div class="tabs">
+              <div class="tab-nav" role="tablist">
+                <button class="tab-btn active" role="tab" data-tab="help">❓ Help</button>
+                <button class="tab-btn" role="tab" data-tab="filters">🔍 Filters & Sort</button>
+                <button class="tab-btn" role="tab" data-tab="extractors">📚 Extractor Library</button>
               </div>
-              <div class="progress-text" id="uploadProgressText">Parsing...</div>
+              <div class="tab-panels">
+                <div class="tab-panel" id="tab-help" role="tabpanel"></div>
+                <div class="tab-panel" id="tab-filters" role="tabpanel" style="display:none"></div>
+                <div class="tab-panel" id="tab-extractors" role="tabpanel" style="display:none"></div>
+              </div>
             </div>
           </div>
         </div>
       </section>
+
+      <!-- Upload Section: moved to top to prioritize file selection -->
 
       <!-- Filters & Sort Section -->
       <section class="section-card" id="section-filters" data-section="filters">
@@ -236,6 +255,31 @@
         </h2>
         <div class="section-content">
           <div class="pad">
+            <!-- Saved Filters - collapsed by default and integrated into Filters & Sort -->
+            <details id="savedFiltersDetails" style="margin-bottom:10px">
+              <summary>🔖 Saved Filters</summary>
+              <div style="margin-top:8px">
+                <div style="margin-top:8px" id="savedFilterActions">
+                  <button class="btn" id="loadSavedFilter">Load into Filters</button>
+                  <button class="btn ghost" id="applySavedFilter">Load & Apply</button>
+                </div>
+                <div id="savedFilterProgress" class="progress-container" style="display:none; margin-top:8px;">
+                  <div class="progress-bar">
+                    <div class="progress-fill" id="savedFilterProgressFill"></div>
+                  </div>
+                  <div class="progress-text" id="savedFilterProgressText">Applying saved filter...</div>
+                </div>
+                <div id="filterList" class="library-list" style="margin-top:12px"></div>
+              </div>
+            </details>
+            <!-- Saved filter selector below the collapsed section (always visible) -->
+            <div style="margin-bottom:12px">
+              <label class="wide">Choose a saved filter
+                <select id="savedFilterSelect" style="width:100%; margin-top:6px">
+                  <option value="">-- Select saved filter --</option>
+                </select>
+              </label>
+            </div>
               <div class="flex" style="margin-top:10px">
                 <span class="right pill" id="info">—</span>
               </div>
@@ -291,6 +335,12 @@
             <div class="flex" style="margin-top:18px">
               <button class="btn" id="apply">Apply</button>
               <button class="btn ghost" id="clear">Clear filters</button>
+            </div>
+            
+            <!-- Save Current Filter moved to bottom of Filters & Sort -->
+            <div class="flex" style="margin-top:12px">
+              <button class="btn" id="saveCurrentFilter" title="Save the current filter settings as a preset">💾 Save Current Filter</button>
+              <span class="right pill" id="filterLibInfo">—</span>
             </div>
           </div>
         </div>
@@ -355,58 +405,9 @@
         </div>
       </section>
 
-      <!-- Saved Filters Section -->
-      <section class="section-card" id="section-saved-filters" data-section="saved-filters">
-        <h2 class="section-header">
-          <span class="section-icon">🔖</span>
-          <span>Saved Filters</span>
-        </h2>
-        <div class="section-content">
-          <div class="pad">
-            <div class="flex" style="margin-bottom:10px">
-              <button class="btn" id="saveCurrentFilter" title="Save the current filter settings as a preset">💾 Save Current Filter</button>
-              <span class="right pill" id="filterLibInfo">—</span>
-            </div>
-            
-            <div id="savedFilterProgress" class="progress-container" style="display:none;">
-              <div class="progress-bar">
-                <div class="progress-fill" id="savedFilterProgressFill"></div>
-              </div>
-              <div class="progress-text" id="savedFilterProgressText">Applying saved filter...</div>
-            </div>
-            
-            <div id="filterList" class="library-list">
-              <div class="empty-state">No filters saved. Apply filters and click "Save Current Filter".</div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <!-- Saved Filters moved into Filters & Sort (UI updated below) -->
 
-      <!-- Summary Section -->
-      <section class="section-card" id="section-summary" data-section="summary">
-        <h2 class="section-header">
-          <span class="section-icon">📊</span>
-          <span>Summary</span>
-        </h2>
-        <div class="section-content">
-          <div class="pad">
-            <div class="stats">
-              <div class="stat"><div class="k">Rows</div><div class="v" id="sRows">0</div></div>
-              <div class="stat ok"><div class="k">INFO</div><div class="v" id="sInfo">0</div></div>
-              <div class="stat warn"><div class="k">WARN</div><div class="v" id="sWarn">0</div></div>
-              <div class="stat err"><div class="k">ERROR</div><div class="v" id="sErr">0</div></div>
-            </div>
-            <div class="tags">
-              <span class="tag" id="fileTag">no file</span>
-              <span class="tag" id="countTag">0 lines</span>
-              <span class="tag" id="filterTag">no filters</span>
-            </div>
-            <div style="margin-top:10px">
-              <canvas id="spark"></canvas>
-            </div>
-          </div>
-        </div>
-      </section>
+      <!-- Summary merged into Results (see below) -->
 
       <!-- Results Section (Always Visible) -->
       <section class="section-card always-visible" id="section-results" data-section="results">
@@ -416,6 +417,18 @@
         </h2>
         <div class="section-content">
           <div class="pad">
+            <div class="stats" style="margin-bottom:12px">
+              <div class="stat"><div class="k">Rows</div><div class="v" id="sRows">0</div></div>
+              <div class="stat ok"><div class="k">INFO</div><div class="v" id="sInfo">0</div></div>
+              <div class="stat warn"><div class="k">WARN</div><div class="v" id="sWarn">0</div></div>
+              <div class="stat err"><div class="k">ERROR</div><div class="v" id="sErr">0</div></div>
+            </div>
+            <div class="tags" style="margin-bottom:12px">
+              <span class="tag" id="fileTag">no file</span>
+              <span class="tag" id="countTag">0 lines</span>
+              <span class="tag" id="filterTag">no filters</span>
+            </div>
+            <div style="margin-bottom:12px"><canvas id="spark"></canvas></div>
             <div class="flex" style="margin-bottom:8px">
               <div class="pagination">
                 <button class="btn" id="first">⏮</button>
