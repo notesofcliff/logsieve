@@ -147,6 +147,16 @@
               </ul>
               <p style="margin-top:8px">When extractors create new fields, the builder will automatically surface unique values for that field as suggestions (click a value or use the datalist). This speeds up creating precise filters.</p>
               <p><strong>Tip:</strong> Extracted fields become sortable columns in the Results table and export cleanly to CSV/JSON.</p>
+              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Columns</h3>
+              <p>The <strong>Columns</strong> panel (Search Tools → Columns) lets you control which fields appear in the Results table and in what order.</p>
+              <ul style="margin:8px 0; padding-left:20px">
+                <li><strong>Show / hide:</strong> Use the checkboxes to toggle columns on or off. Columns are shown by default.</li>
+                <li><strong>Reorder:</strong> Drag the ≡ handle next to a column to move it — the Results table will update to match the new order.</li>
+                <li><strong>Persistence:</strong> Your column visibility and order are saved in your browser so they persist across sessions.</li>
+                <li><strong>New fields:</strong> When extractors add new fields they will be appended to your column order so you can enable and reposition them.</li>
+                <li><strong>Export:</strong> JSON and CSV exports respect the current column order and only include visible columns.</li>
+              </ul>
+              <p style="margin-top:6px; color:var(--muted); font-size:13px">Keyboard reordering is not currently implemented — open an issue if you'd like keyboard accessibility added.</p>
               
               <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Saved Filters</h3>
               <p>Save and reuse filter combinations for common queries:</p>

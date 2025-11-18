@@ -18,7 +18,8 @@ A lightweight, client-side web application for exploring and filtering log files
 - **Saved filters** - Store filter presets for quick access to common queries
 - **Import/export** - Share extractor libraries and filter configurations across devices
 - **Visual summaries** - Get log level counts and timeline sparkline charts
-- **Export capabilities** - Export filtered results as JSON or CSV
+ - **Export capabilities** - Export filtered results as JSON or CSV (exports respect column order and visible columns)
+ - **Columns control** - Show/hide and reorder result table columns (drag to reorder)
 - **Completely offline** - No data leaves your machine, no server required
 
 ## Quick Start
@@ -38,12 +39,12 @@ A lightweight, client-side web application for exploring and filtering log files
 
 **Multiple Matches:** If your regex matches multiple times per line (e.g., `(?<num>\d+)` to extract all numbers), LogSieve captures all occurrences as an array. Single values display normally; arrays show as JSON.
 
-To quickly try pre-configured patterns, click **"📥 Import Library"** and select `sample-extractors.json`.
+To quickly try pre-configured patterns, click **"Import Library"** and select `sample-extractors.json`.
 
 ### Saving Filters
 
 1. Set up your filters (search text, log level, date range, etc.)
-2. Click **"💾 Save Current Filter"**  
+2. Click **"Save Current Filter"**  
 3. Enter a name like "Critical Errors" and save
 4. Later, click the filter name to instantly reapply all settings
 
@@ -136,6 +137,16 @@ After parsing, each log entry is structured as:
 
 For multi-line events, both `message` and `raw` contain the complete text including all continuation lines joined with newlines.
 
+#### Timestamps & Timezones
+
+LogSieve detects many common timestamp formats and attempts to normalize them for consistent filtering and display. Key behaviors:
+
+- If a timestamp includes a timezone (for example `Z` or `+02:00`) it is parsed as UTC and converted to your local timezone for display.
+- Naive timestamps without timezone information (e.g., `2025-11-13 10:30:20.345`) are treated as local timestamps.
+- The Results table displays times in your detected local timezone; comparisons and filtering use canonical ISO times under the hood.
+
+This makes date-based filters and sorting behave consistently while preserving the familiarity of local times in the UI.
+
 ### Filtering and Search
 
 LogSieve uses in-memory filtering with a lowercase copy of each line for fast text search:
@@ -174,6 +185,19 @@ Save complete filter configurations for quick access to common queries:
 
 Saved filters capture all active search parameters including text queries, log levels, date ranges, regex patterns, and sort order. Apply any saved filter with one click to instantly reproduce complex filter combinations. All filter presets are stored locally in the browser.
 
+### Query Builder
+
+LogSieve includes a visual Query Builder that lets you create structured rules without memorizing syntax. A rule has three parts: Field, Operator and Value. Rules can be combined with logical operators (AND/OR). Use the Builder to restrict by standard fields (`level`, `ts`, `message`, `raw`) or any extracted field. Builder changes do not apply automatically — click **Apply** to run them.
+
+Features:
+- Type-aware operators (text, numeric, date, array)
+- Date pickers for date comparisons and a `between` operator that accepts start/end
+- Datalist suggestions populated from observed values for extracted fields
+
+### Advanced Text Query
+
+For power users who prefer text queries, LogSieve provides an Advanced Query area supporting compact syntax such as `field:value`, comparison operators (`>`, `<`, `>=`, `<=`, `!=`), and quoted strings. You can combine expressions with `AND` and `OR`. Advanced queries are validated on Apply and applied together with the Builder rules so you can mix visual and textual filters.
+
 ### Field Extraction
 
 LogSieve supports **named-group regex extraction** for structured data parsing.
@@ -209,6 +233,16 @@ When multiple extractors match the same line, a configurable merge strategy dete
 Configure the merge strategy in the Settings section. All extractors are stored in browser localStorage, keeping your data completely private.
 
 A sample extractor library (`sample-extractors.json`) is included with common patterns for Apache logs, bracketed formats, user actions, IP addresses, and key-value pairs.
+
+### Columns (Show / Hide & Reorder)
+
+LogSieve lets you control which columns appear in the Results table and in what order. Open **Search Tools → Columns** to access the controls.
+
+- **Show / hide:** Use the checkboxes to toggle columns on or off. Columns are visible by default.
+- **Reorder:** Drag the ≡ handle next to a column to move it — the Results table updates immediately to follow the new order.
+- **Persistence:** Your column visibility and order are saved in browser storage and persist across sessions.
+- **New fields:** When extractors introduce new fields they are appended to your column order so you can enable and reposition them.
+- **Export behavior:** JSON and CSV exports respect the current column order and include only visible columns.
 
 ### Summary Statistics
 
