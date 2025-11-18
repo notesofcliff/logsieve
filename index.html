@@ -9,27 +9,41 @@
 <body>
   <header>
     <div class="header-top">
-      <!-- sidebar/hamburger removed: simplified header (no sidebar) -->
-      <button class="btn theme-toggle small-theme" id="themeToggleSmall" title="Toggle theme">
-        <span class="theme-icon">☀️</span>
-      </button>
-      <h1>LogSieve · single‑file</h1>
+      <div class="dropdown-group">
+        <div class="dropdown">
+          <button class="btn dropdown-toggle" id="linksDropdown">Links ▼</button>
+          <div class="dropdown-menu" id="linksMenu">
+            <a href="https://github.com/notesofcliff/logsieve" target="_blank">Source Code</a>
+            <a href="https://github.com/sponsors/notesofcliff" target="_blank">Sponsor</a>
+            <a href="https://github.com/notesofcliff/logsieve/issues" target="_blank">Report an Issue</a>
+          </div>
+        </div>
+        <div class="dropdown">
+          <button class="btn dropdown-toggle" id="toolsDropdown">Tools ▼</button>
+          <div class="dropdown-menu" id="toolsMenu">
+            <a href="regexlab.html">RegexLab</a>
+            <div class="dropdown-submenu">
+              <button class="dropdown-submenu-toggle">Library</button>
+              <div class="dropdown-menu">
+                <button id="exportLibrary">Export</button>
+                <button id="importLibrary">Import</button>
+              </div>
+            </div>
+            <div class="dropdown-submenu">
+              <button class="dropdown-submenu-toggle">Data</button>
+              <div class="dropdown-menu">
+                <button id="exportJSON">JSON</button>
+                <button id="exportCSV">CSV</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <h1>Logsieve</h1>
       <button class="btn theme-toggle" id="themeToggle" title="Toggle theme">
         <span class="theme-icon">☀️</span>
       </button>
-    </div>
-    <div class="header-links">
-      <a class="tag" href="https://github.com/notesofcliff/logsieve" target="_blank">📦 Source Code</a>
-      <a class="tag" href="https://github.com/sponsors/notesofcliff" target="_blank">💖 Sponsor</a>
-      <a class="tag" href="https://github.com/notesofcliff/logsieve/issues" target="_blank">🐞 Report an Issue</a>
-      <a class="tag" href="regexlab.html">🧪 RegexLab</a>
-    </div>
-    <div class="header-actions">
-      <button class="btn ghost" id="exportLibrary" title="Export extractors & filters">💾 Export Library</button>
-      <button class="btn ghost" id="importLibrary" title="Import extractors & filters">📥 Import Library</button>
       <input type="file" id="importFile" accept=".json" hidden />
-      <button class="btn" id="exportJSON">Export Data</button>
-      <button class="btn ghost" id="exportCSV">CSV</button>
     </div>
   </header>
 
@@ -40,14 +54,13 @@
       <!-- Upload Section (moved to top) -->
       <section class="section-card active" id="section-upload" data-section="upload">
         <h2 class="section-header">
-          <span class="section-icon">📁</span>
           <span>Upload</span>
         </h2>
         <div class="section-content">
           <div class="pad">
             <div id="drop" class="drop">
               Drag & drop a .log/.txt file here, or <button class="btn" id="pick">Browse…</button>
-              <input type="file" id="file" accept=".log,.txt,.json,.ndjson" hidden />
+              <input type="file" id="file" accept=".log,.txt,.json,.ndjson,.csv" hidden />
             </div>
             <div id="uploadProgress" class="progress-container" style="display:none;">
               <div class="progress-bar">
@@ -62,7 +75,6 @@
       <!-- Help Section -->
       <section class="section-card" id="section-help" data-section="help">
         <h2 class="section-header">
-          <span class="section-icon">❓</span>
           <span>Help</span>
         </h2>
         <div class="section-content">
@@ -71,7 +83,7 @@
               <h3 style="margin-top:0; font-size:15px; color:var(--ink)">Getting Started</h3>
               <p>LogSieve is a powerful log analysis tool that runs entirely in your browser. Use the section headers or Search Tools tabs to navigate between sections, and click section headers to expand/collapse them. The Results section is always visible so you can see your data while working.</p>
               
-              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">📁 Upload</h3>
+              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Upload</h3>
               <p>Load your log files to start analyzing. LogSieve supports multiple formats:</p>
               <ul style="margin:8px 0; padding-left:20px">
                 <li><strong>Plain text logs (.log, .txt)</strong> - Automatically detects timestamps, log levels, and multi-line events like stack traces</li>
@@ -81,7 +93,7 @@
               </ul>
               <p><strong>How to use:</strong> Drag and drop your file onto the upload area, or click "Browse..." to select a file. All processing happens in your browser - no data is uploaded to any server.</p>
               
-              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">🔍 Filters & Sort</h3>
+              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Filters & Sort</h3>
               <p>Narrow down your logs to find exactly what you need. LogSieve now uses an extensible Query Builder for structured filtering plus an Advanced Query input for free-form queries. Both are applied together when you click <strong>Apply</strong>.</p>
               <ul style="margin:8px 0; padding-left:20px">
                 <li><strong>Builder rules</strong> - Create structured rules by choosing a Field, Operator and Value. Use logical operators (AND/OR) between rules. The builder is the primary filter UI and is visible by default.</li>
@@ -118,7 +130,7 @@
                 <li>Filtering and date comparisons are done using canonical ISO times, but the UI uses local time for input and display for better intuition</li>
               </ul>
               
-              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">📚 Extractor Library</h3>
+              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Extractor Library</h3>
               <p>Extract structured data from unstructured logs using regular expressions with named groups:</p>
               <ul style="margin:8px 0; padding-left:20px">
                 <li><strong>Create Extractors</strong> - Click "+ New Extractor" to define a regex pattern with named groups like <code>(?&lt;user&gt;\w+)</code></li>
@@ -136,7 +148,7 @@
               <p style="margin-top:8px">When extractors create new fields, the builder will automatically surface unique values for that field as suggestions (click a value or use the datalist). This speeds up creating precise filters.</p>
               <p><strong>Tip:</strong> Extracted fields become sortable columns in the Results table and export cleanly to CSV/JSON.</p>
               
-              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">🔖 Saved Filters</h3>
+              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Saved Filters</h3>
               <p>Save and reuse filter combinations for common queries:</p>
               <ul style="margin:8px 0; padding-left:20px">
                 <li><strong>Save Current Filter</strong> - After setting up filters in the Filters & Sort section, click "💾 Save Current Filter"</li>
@@ -146,7 +158,7 @@
               <p><strong>Tip:</strong> Filter presets capture all settings including builder rules, Advanced Query, and sort order.</p>
               <p>Saved filters persist both Builder rules and the text form of Advanced Query so you can reapply exact searches later. If a saved filter contains invalid settings (missing builder values, etc) we will restore as much as possible and leave blank fields for you to fix before reapplying.</p>
               
-              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">📊 Summary</h3>
+              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Summary</h3>
               <p>Get a quick overview of your log data:</p>
               <ul style="margin:8px 0; padding-left:20px">
                 <li><strong>Statistics</strong> - See total row count and breakdown by log level (INFO, WARN, ERROR)</li>
@@ -155,7 +167,7 @@
               </ul>
               <p><strong>Note:</strong> Statistics update automatically whenever you apply filters or load new data.</p>
               
-              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">📋 Results</h3>
+              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Results</h3>
               <p>View and interact with your filtered log data:</p>
               <ul style="margin:8px 0; padding-left:20px">
                 <li><strong>Table View</strong> - Displays ID, Timestamp, Level, Message, and any extracted fields as columns</li>
@@ -172,7 +184,7 @@
                 <li><strong>Regex failing</strong> - test patterns in Quick Test first; named groups populate fields used in the Builder and results.</li>
               </ul>
               
-              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">💾 Import/Export</h3>
+              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Import/Export</h3>
               <p>Share your work or backup your configuration:</p>
               <ul style="margin:8px 0; padding-left:20px">
                 <li><strong>Export Data</strong> - Save filtered results as JSON or CSV files (top header buttons)</li>
@@ -181,12 +193,12 @@
               </ul>
               <p><strong>Privacy:</strong> All data stays in your browser. Nothing is sent to any server. Extractors and filters are saved in localStorage.</p>
               
-              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">⌨️ Keyboard Shortcuts</h3>
+              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Keyboard Shortcuts</h3>
               <ul style="margin:8px 0; padding-left:20px">
                 <li><strong>ESC</strong> - Close any open modal dialog</li>
               </ul>
               
-              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">🎨 Theme</h3>
+              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Theme</h3>
               <p>Click the 🌙/☀️ button in the top header to toggle between dark and light themes. Your preference is saved automatically.</p>
             </div>
           </div>
@@ -196,16 +208,15 @@
       <!-- Search Tools (tabs) - collapsed by default -->
       <section class="section-card" id="section-search" data-section="search">
         <h2 class="section-header">
-          <span class="section-icon">🔎</span>
           <span>Search Tools</span>
         </h2>
         <div class="section-content">
           <div class="pad">
             <div class="tabs">
               <div class="tab-nav" role="tablist">
-                <button class="tab-btn active" role="tab" data-tab="help">❓ Help</button>
-                <button class="tab-btn" role="tab" data-tab="filters">🔍 Filters & Sort</button>
-                <button class="tab-btn" role="tab" data-tab="extractors">📚 Extractor Library</button>
+                <button class="tab-btn active" role="tab" data-tab="help">Help</button>
+                <button class="tab-btn" role="tab" data-tab="filters">Filters & Sort</button>
+                <button class="tab-btn" role="tab" data-tab="extractors">Extractor Library</button>
               </div>
               <div class="tab-panels">
                 <div class="tab-panel" id="tab-help" role="tabpanel"></div>
@@ -222,14 +233,13 @@
       <!-- Filters & Sort Section -->
       <section class="section-card" id="section-filters" data-section="filters">
         <h2 class="section-header">
-          <span class="section-icon">🔍</span>
           <span>Filters & Sort</span>
         </h2>
         <div class="section-content">
           <div class="pad">
             <!-- Saved Filters - collapsed by default and integrated into Filters & Sort -->
             <details id="savedFiltersDetails" style="margin-bottom:10px">
-              <summary>🔖 Saved Filters</summary>
+              <summary>Saved Filters</summary>
               <div style="margin-top:8px">
                 <div style="margin-top:8px" id="savedFilterActions">
                   <button class="btn" id="loadSavedFilter">Load into Filters</button>
@@ -311,7 +321,7 @@
             
             <!-- Save Current Filter moved to bottom of Filters & Sort -->
             <div class="flex" style="margin-top:12px">
-              <button class="btn" id="saveCurrentFilter" title="Save the current filter settings as a preset">💾 Save Current Filter</button>
+              <button class="btn" id="saveCurrentFilter" title="Save the current filter settings as a preset">Save Current Filter</button>
               <span class="right pill" id="filterLibInfo">—</span>
             </div>
           </div>
@@ -321,14 +331,13 @@
       <!-- Extractor Library Section -->
       <section class="section-card" id="section-extractors" data-section="extractors">
         <h2 class="section-header">
-          <span class="section-icon">📚</span>
           <span>Extractor Library</span>
         </h2>
         <div class="section-content">
           <div class="pad">
             <div class="flex" style="margin-bottom:10px">
               <button class="btn" id="addExtractor" title="Create a new regex extractor">+ New Extractor</button>
-              <button class="btn ghost" id="runActiveExtractors" title="Apply all checked extractors">▶ Run Active</button>
+              <button class="btn ghost" id="runActiveExtractors" title="Apply all checked extractors">Run Active</button>
               <label style="margin-left:10px"> Apply to
                 <select id="extractScope" title="Choose whether to apply extractors to all rows or only filtered rows">
                   <option value="all">All rows</option>
@@ -384,7 +393,6 @@
       <!-- Results Section (Always Visible) -->
       <section class="section-card always-visible" id="section-results" data-section="results">
         <h2 class="section-header">
-          <span class="section-icon">📋</span>
           <span>Results</span>
         </h2>
         <div class="section-content">

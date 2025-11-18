@@ -79,25 +79,17 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
+  position: relative;
 }
 
-.header-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.header-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-h1 {
-  font-size: 0.95rem;
+.header-top h1 {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   margin: 0;
+  font-size: 0.95rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 /* Button-like Links in Header */
@@ -131,8 +123,8 @@ header a.tag:hover {
     padding: 0.875rem 1rem;
   }
   
-  h1 {
-    font-size: 1rem;
+  .header-top h1 {
+    font-size: 0.875rem;
   }
   
   .header-links,
@@ -312,6 +304,84 @@ textarea:focus {
   background: transparent;
 }
 
+/* Dropdown Styles */
+.dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-toggle {
+  cursor: pointer;
+}
+
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  min-width: 150px;
+  padding: 0.5rem 0;
+}
+
+:root.dark-theme .dropdown-menu {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+}
+
+.dropdown-menu.show {
+  display: block;
+}
+
+.dropdown-menu a,
+.dropdown-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 1rem;
+  border: none;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 0.875rem;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+
+.dropdown-menu a:hover,
+.dropdown-menu button:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.dropdown-submenu {
+  position: relative;
+}
+
+.dropdown-submenu .dropdown-menu {
+  top: -0.5rem;
+  left: 100%;
+  margin-left: 0.25rem;
+}
+
+.dropdown-submenu-toggle::after {
+  content: '▶';
+  float: right;
+  font-size: 0.75rem;
+  margin-left: auto;
+}
+
+/* Dropdown Group */
+.dropdown-group {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
 /* Theme Toggle Button */
 .theme-toggle {
   min-width: 2.75rem;
@@ -330,8 +400,6 @@ textarea:focus {
 
   /* Keep the theme toggle hidden by default; show next to hamburger on small screens */
   .small-theme { display: inline-flex; margin-left: 48px; }
-  /* Hide the primary theme-toggle on small screens to avoid overlap with the hamburger */
-  .header-top .theme-toggle:not(.small-theme) { display: none; }
 }
 
 /* Extra tight layout for very small screens */

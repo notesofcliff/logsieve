@@ -2636,16 +2636,13 @@ function initializeTheme() {
 function setTheme(theme) {
   const root = document.documentElement;
   const themeIcon = $('#themeToggle .theme-icon');
-  const themeIconSmall = $('#themeToggleSmall .theme-icon');
   
   if (theme === 'light') {
     root.classList.remove('dark-theme');
     themeIcon.textContent = '☀️';
-    if (themeIconSmall) themeIconSmall.textContent = '☀️';
   } else {
     root.classList.add('dark-theme');
     themeIcon.textContent = '🌙';
-    if (themeIconSmall) themeIconSmall.textContent = '🌙';
   }
   
   // Save preference
@@ -2665,16 +2662,87 @@ function toggleTheme() {
  */
 function initializeThemeToggle() {
   const themeToggle = $('#themeToggle');
-  const themeToggleSmall = $('#themeToggleSmall');
   if (themeToggle) {
     themeToggle.addEventListener('click', toggleTheme);
-  }
-  if (themeToggleSmall) {
-    themeToggleSmall.addEventListener('click', toggleTheme);
   }
   
   // Initialize theme on page load
   initializeTheme();
+}
+
+// ---------- Dropdowns ----------
+
+/**
+ * Toggle dropdown menu visibility
+ */
+function toggleDropdown(menuId) {
+  const menu = $(menuId);
+  if (menu) {
+    const isVisible = menu.classList.contains('show');
+    // Close all dropdowns first
+    document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('show'));
+    // Toggle this one
+    if (!isVisible) {
+      menu.classList.add('show');
+    }
+  }
+}
+
+/**
+ * Close all dropdowns when clicking outside
+ */
+function closeDropdowns(e) {
+  if (!e.target.closest('.dropdown')) {
+    document.querySelectorAll('.dropdown-menu').forEach(menu => menu.classList.remove('show'));
+  }
+}
+
+/**
+ * Initialize dropdown functionality
+ */
+function initializeDropdowns() {
+  // Links dropdown
+  const linksDropdown = $('#linksDropdown');
+  if (linksDropdown) {
+    linksDropdown.addEventListener('click', () => toggleDropdown('#linksMenu'));
+  }
+
+  // Tools dropdown
+  const toolsDropdown = $('#toolsDropdown');
+  if (toolsDropdown) {
+    toolsDropdown.addEventListener('click', () => toggleDropdown('#toolsMenu'));
+  }
+
+  // Submenu toggles
+  document.querySelectorAll('.dropdown-submenu-toggle').forEach(toggle => {
+    toggle.addEventListener('click', (e) => {
+      e.stopPropagation(); // Prevent closing parent menu
+      const submenu = toggle.nextElementSibling;
+      if (submenu) {
+        submenu.classList.toggle('show');
+      }
+    });
+    // Also open on hover
+    toggle.addEventListener('mouseenter', () => {
+      const submenu = toggle.nextElementSibling;
+      if (submenu) {
+        submenu.classList.add('show');
+      }
+    });
+  });
+
+  // Close submenus when leaving the submenu area
+  document.querySelectorAll('.dropdown-submenu').forEach(submenu => {
+    submenu.addEventListener('mouseleave', () => {
+      const menu = submenu.querySelector('.dropdown-menu');
+      if (menu) {
+        menu.classList.remove('show');
+      }
+    });
+  });
+
+  // Close dropdowns when clicking outside
+  document.addEventListener('click', closeDropdowns);
 }
 
 // Initialize when DOM is loaded
@@ -2683,9 +2751,11 @@ if (document.readyState === 'loading') {
     initWorker();
     initializeEventHandlers();
     initializeThemeToggle();
+    initializeDropdowns();
   });
 } else {
   initWorker();
   initializeEventHandlers();
   initializeThemeToggle();
+  initializeDropdowns();
 }
