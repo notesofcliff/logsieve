@@ -499,6 +499,8 @@ let page = 1;         // Current page number
 let per = 50;         // Items per page
 let totalRows = 0;    // Total rows in filtered view
 let fieldNames = new Set();  // Track all extracted field names
+let visibleColumns = new Set(); // Columns the user wants to show; empty => show all
+let columnOrder = []; // ordered list of columns (strings)
 let currentFilterConfig = null;
 let builderOpen = true; // make builder primary and visible by default
 // applied* states capture what was last applied with the Apply button
@@ -543,6 +545,10 @@ function handleWorkerMessage(e) {
       rows = data.rows || [];
       fieldNames = new Set(data.fieldNames || []);
       FieldRegistry.updateFromDataset(rows);
+      // Ensure visible columns and column order reflect new dataset
+      initializeVisibleColumnsFromPrefs();
+      initializeColumnOrderFromPrefs();
+      renderColumnsPanel();
       $("#info").textContent = `Parsed ${fmt(rows.length)} entries`;
       $("#uploadProgress").style.display = 'none';
   // After parsing completes and results are displayed, collapse the Upload section and open Results
@@ -565,6 +571,11 @@ function handleWorkerMessage(e) {
     case 'EXTRACTORS_COMPLETE':
       fieldNames = new Set(data.newFieldNames || []);
       FieldRegistry.updateFromDataset(rows);
+      // Update columns panel and merge new fields into saved order
+      initializeVisibleColumnsFromPrefs();
+      initializeColumnOrderFromPrefs();
+      mergeNewFieldsIntoOrder();
+      renderColumnsPanel();
       $("#extractInfo").textContent = `Applied extractors · ${fmt(data.results.total)} matches`;
       $("#extractorProgress").style.display = 'none';
       updateSortOptions();
@@ -939,15 +950,20 @@ function renderPage(pageData) {
   const theadRow = $("#thead-row");
   body.innerHTML = "";
 
-  // Update table headers with dynamic field columns
-  const sortedFields = [...fieldNames].sort();
-  theadRow.innerHTML = `
-    <th style="width:72px">ID</th>
-  <th style="width:210px">Timestamp <br/>(<span id="tzLabel">${escapeHtml(userTimeZone)}</span>)</th>
-    <th style="width:120px">Level</th>
-    <th style="max-width:80ch">Message</th>
-    ${sortedFields.map(f => `<th style="width:150px">${escapeHtml(f)}</th>`).join('')}
-  `;
+  // Update table headers with dynamic field columns using user-defined columnOrder
+  const order = getCurrentColumnOrder();
+  const displayedCols = order.filter(c => isColumnVisible(c));
+
+  // Build header cells matching displayed columns
+  const headerHtml = displayedCols.map(col => {
+    if (col === 'id') return `<th style="width:72px">ID</th>`;
+    if (col === 'ts') return `<th style="width:210px">Timestamp <br/>(<span id="tzLabel">${escapeHtml(userTimeZone)}</span>)</th>`;
+    if (col === 'level') return `<th style="width:120px">Level</th>`;
+    if (col === 'message') return `<th style="max-width:80ch">Message</th>`;
+    return `<th style="width:150px">${escapeHtml(col)}</th>`;
+  }).join('');
+
+  theadRow.innerHTML = headerHtml;
 
   const pageRows = pageData.pageRows;
   const frag = document.createDocumentFragment();
@@ -955,26 +971,23 @@ function renderPage(pageData) {
   for (const r of pageRows) {
     const tr = document.createElement('tr');
 
-    // Build field cells - format arrays nicely
-    const fieldCells = sortedFields.map(fieldName => {
-      const val = r.fields?.[fieldName];
-      if (!val) return '<td></td>';
+    // Build cells in same order as headers
+    const cellsHtml = displayedCols.map(col => {
+      if (col === 'id') return `<td>${r.id}</td>`;
+      if (col === 'ts') return `<td>${formatLocalDatetime(r.ts) || ''}</td>`;
+      if (col === 'level') return `<td><span class="lvl-${r.level}">${r.level || ''}</span></td>`;
+      if (col === 'message') return `<td><pre>${escapeHtml(r.message)}</pre><details><summary>raw</summary><pre>${escapeHtml(r.raw)}</pre></details></td>`;
+
+      const val = r.fields?.[col];
+      if (val === undefined || val === null) return '<td></td>';
       if (Array.isArray(val)) {
-        if (val.length === 1) {
-          return `<td>${escapeHtml(val[0])}</td>`;
-        } else {
-          return `<td><code>${escapeHtml(JSON.stringify(val))}</code></td>`;
-        }
+        if (val.length === 1) return `<td>${escapeHtml(val[0])}</td>`;
+        return `<td><code>${escapeHtml(JSON.stringify(val))}</code></td>`;
       }
       return `<td>${escapeHtml(String(val))}</td>`;
     }).join('');
 
-    tr.innerHTML = `
-      <td>${r.id}</td>
-    <td>${formatLocalDatetime(r.ts) || ''}</td>
-      <td><span class="lvl-${r.level}">${r.level || ''}</span></td>
-      <td><pre>${escapeHtml(r.message)}</pre><details><summary>raw</summary><pre>${escapeHtml(r.raw)}</pre></details></td>
-      ${fieldCells}`;
+    tr.innerHTML = cellsHtml;
     frag.appendChild(tr);
   }
 
@@ -1207,6 +1220,186 @@ function updateSortOptions() {
   if (options.some(opt => opt.value === currentValue)) {
     sortSelect.value = currentValue;
   }
+  // Refresh columns panel since available fields changed
+  mergeNewFieldsIntoOrder();
+  renderColumnsPanel();
+}
+
+// ---------- Columns Visibility Management ----------
+
+function initializeVisibleColumnsFromPrefs() {
+  const prefs = Storage.getPrefs() || {};
+  if (prefs.visibleColumns && Array.isArray(prefs.visibleColumns)) {
+    visibleColumns = new Set(prefs.visibleColumns || []);
+  } else {
+    // keep empty Set to mean "all visible" (default)
+    visibleColumns = new Set();
+  }
+}
+
+// ---------- Column Order / Reordering (native drag & drop) ----------
+
+function initializeColumnOrderFromPrefs() {
+  const prefs = Storage.getPrefs() || {};
+  if (prefs.columnOrder && Array.isArray(prefs.columnOrder)) {
+    columnOrder = prefs.columnOrder.slice();
+  } else {
+    columnOrder = [];
+  }
+  // Ensure we merge any fields known now
+  mergeNewFieldsIntoOrder();
+}
+
+function saveColumnOrderToPrefs() {
+  const prefs = Storage.getPrefs();
+  prefs.columnOrder = columnOrder.slice();
+  Storage.savePrefs(prefs);
+}
+
+function mergeNewFieldsIntoOrder() {
+  // Ensure columnOrder contains the standard columns and any extracted fields, append new ones
+  const sortedFields = [...fieldNames].sort();
+  const allCols = ['id', 'ts', 'level', 'message', ...sortedFields];
+
+  if (!columnOrder || columnOrder.length === 0) {
+    columnOrder = allCols.slice();
+    return;
+  }
+
+  // Filter out any columns no longer present, then append missing ones in allCols order
+  const filtered = columnOrder.filter(c => allCols.includes(c));
+  const missing = allCols.filter(c => !filtered.includes(c));
+  columnOrder = filtered.concat(missing);
+}
+
+function getCurrentColumnOrder() {
+  mergeNewFieldsIntoOrder();
+  return columnOrder.slice();
+}
+
+function isColumnVisible(colKey) {
+  // If user has not specifically configured columns, treat all as visible
+  if (!visibleColumns || visibleColumns.size === 0) return true;
+  return visibleColumns.has(colKey);
+}
+
+function saveVisibleColumnsToPrefs() {
+  const prefs = Storage.getPrefs();
+  prefs.visibleColumns = visibleColumns.size ? Array.from(visibleColumns) : [];
+  Storage.savePrefs(prefs);
+}
+
+function setColumnVisibility(colKey, visible) {
+  // If no explicit config exists yet (empty = all visible), initialize to current all columns
+  if ((!visibleColumns || visibleColumns.size === 0) && !visible) {
+    // populate with all currently-known columns so we can toggle one off
+    const all = ['id', 'ts', 'level', 'message', ...[...fieldNames].sort()];
+    visibleColumns = new Set(all);
+  }
+
+  if (visible) visibleColumns.add(colKey);
+  else visibleColumns.delete(colKey);
+
+  saveVisibleColumnsToPrefs();
+  // Re-render results and columns panel
+  render();
+  renderColumnsPanel();
+}
+
+function renderColumnsPanel() {
+  const container = $("#columnsList");
+  if (!container) return;
+  const order = getCurrentColumnOrder();
+
+  if (!order.length) {
+    container.innerHTML = '<div class="empty-state">No columns available yet. Load a file or run extractors to populate columns.</div>';
+    return;
+  }
+
+  const html = order.map(col => {
+    const label = col === 'id' ? 'ID' : (col === 'ts' ? 'Timestamp' : (col === 'level' ? 'Level' : (col === 'message' ? 'Message' : col)));
+    const checked = isColumnVisible(col) ? 'checked' : '';
+    return `
+      <div class="library-item" draggable="true" data-col="${escapeHtml(col)}" style="display:flex; align-items:center; gap:8px; padding:6px">
+        <div class="drag-handle" title="Drag to reorder" style="cursor:grab; padding-right:8px; user-select:none;">≡</div>
+        <label style="display:flex; align-items:center; gap:8px; flex:1">
+          <input type="checkbox" class="col-toggle" data-col="${escapeHtml(col)}" ${checked} />
+          <span style="flex:1">${escapeHtml(label)}</span>
+        </label>
+      </div>
+    `;
+  }).join('');
+
+  // Add reset button and container for reorderable list
+  container.innerHTML = `
+    <div style="margin-bottom:8px; display:flex; gap:8px; align-items:center">
+      <button class="btn" id="columnsReset">Reset to default</button>
+      <div style="color:var(--muted); font-size:13px">Unchecked columns will be hidden in Results. Drag to reorder columns.</div>
+    </div>
+    <div id="columnsListContainer">${html}</div>
+  `;
+
+  const list = container.querySelector('#columnsListContainer');
+
+  // Attach checkbox listeners
+  list.querySelectorAll('.col-toggle').forEach(cb => cb.addEventListener('change', (e) => {
+    const col = e.currentTarget.dataset.col;
+    setColumnVisibility(col, e.currentTarget.checked);
+  }));
+
+  const reset = container.querySelector('#columnsReset');
+  if (reset) reset.addEventListener('click', () => {
+    // Clear prefs to default (all visible) and reset order
+    visibleColumns = new Set();
+    columnOrder = [];
+    saveVisibleColumnsToPrefs();
+    saveColumnOrderToPrefs();
+    render();
+    renderColumnsPanel();
+  });
+
+  // Drag & drop handlers (native)
+  let dragSrcEl = null;
+
+  function getDragAfterElement(containerEl, y) {
+    const draggableElements = [...containerEl.querySelectorAll('.library-item:not(.dragging)')];
+    let closest = { offset: Number.NEGATIVE_INFINITY, element: null };
+    for (const child of draggableElements) {
+      const box = child.getBoundingClientRect();
+      const offset = y - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) {
+        closest = { offset, element: child };
+      }
+    }
+    return closest.element;
+  }
+
+  list.addEventListener('dragstart', (e) => {
+    const el = e.target.closest('.library-item');
+    if (!el) return;
+    dragSrcEl = el;
+    el.classList.add('dragging');
+    try { e.dataTransfer.setData('text/plain', el.dataset.col); } catch (err) { /* some browsers may throw */ }
+    e.dataTransfer.effectAllowed = 'move';
+  });
+
+  list.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    const afterEl = getDragAfterElement(list, e.clientY);
+    if (!dragSrcEl) return;
+    if (!afterEl) list.appendChild(dragSrcEl);
+    else list.insertBefore(dragSrcEl, afterEl);
+  });
+
+  list.addEventListener('dragend', (e) => {
+    if (dragSrcEl) dragSrcEl.classList.remove('dragging');
+    // Update columnOrder from current DOM order
+    const newOrder = [...list.querySelectorAll('.library-item')].map(n => n.dataset.col);
+    columnOrder = newOrder.slice();
+    saveColumnOrderToPrefs();
+    render();
+    dragSrcEl = null;
+  });
 }
 
 /**
@@ -1348,7 +1541,24 @@ async function exportJSON() {
   try {
     const response = await sendToWorker('GET_FULL_VIEW', {}, true);
     const view = response.data;
-    const blob = new Blob([JSON.stringify(view, null, 2)], { type: 'application/json' });
+    // Ensure column order is up to date and respect visibility
+    mergeNewFieldsIntoOrder();
+    const exportCols = getCurrentColumnOrder().filter(c => isColumnVisible(c));
+
+    // Build array of row objects containing only selected columns in the specified order
+    const out = view.map(r => {
+      const obj = {};
+      for (const col of exportCols) {
+        if (col === 'id') obj.id = r.id;
+        else if (col === 'ts') obj.ts = r.ts || '';
+        else if (col === 'level') obj.level = r.level || '';
+        else if (col === 'message') obj.message = r.message || '';
+        else obj[col] = r.fields?.[col] === undefined ? null : r.fields[col];
+      }
+      return obj;
+    });
+
+    const blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'logsieve-data.json';
@@ -1366,39 +1576,33 @@ async function exportCSV() {
   try {
     const response = await sendToWorker('GET_FULL_VIEW', {}, true);
     const view = response.data;
-    const sortedFields = [...fieldNames].sort();
-    const header = ['id', 'ts', 'level', 'message', ...sortedFields];
-    const lines = [header.join(',')];
+    // Ensure column order is up to date and respect visibility
+    mergeNewFieldsIntoOrder();
+    const exportCols = getCurrentColumnOrder().filter(c => isColumnVisible(c));
+
+    // Build header row using exportCols
+    const header = exportCols.map(h => `"${String(h).replace(/"/g, '""')}"`).join(',');
+    const lines = [header];
 
     for (const r of view) {
-      const baseFields = [
-        r.id,
-        r.ts || '',
-        r.level || '',
-        (r.message || '').replaceAll('"', '""')
-      ];
-      
-      // Add extracted fields - format arrays as JSON strings
-      const extractedFields = sortedFields.map(fieldName => {
-        const val = r.fields?.[fieldName];
-        if (!val) return '';
-        if (Array.isArray(val)) {
-          if (val.length === 1) return val[0];
-          return JSON.stringify(val);
+      const rowVals = exportCols.map(col => {
+        let val;
+        if (col === 'id') val = r.id;
+        else if (col === 'ts') val = r.ts || '';
+        else if (col === 'level') val = r.level || '';
+        else if (col === 'message') val = r.message || '';
+        else {
+          const v = r.fields?.[col];
+          if (v === undefined || v === null) val = '';
+          else if (Array.isArray(v)) {
+            val = v.length === 1 ? v[0] : JSON.stringify(v);
+          } else val = String(v);
         }
-        return String(val);
+        // Quote and escape
+        return `"${String(val).replace(/"/g, '""')}"`;
       });
-      
-      // Build CSV row with proper quoting
-      const csvRow = [
-        baseFields[0], // id
-        baseFields[1], // ts
-        baseFields[2], // level
-        `"${baseFields[3]}"`, // message (quoted)
-        ...extractedFields.map(f => `"${String(f).replaceAll('"', '""')}"`)
-      ].join(',');
-      
-      lines.push(csvRow);
+
+      lines.push(rowVals.join(','));
     }
 
     const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
@@ -2558,6 +2762,10 @@ function initializeEventHandlers() {
   if (info) info.textContent = `Timestamps are displayed in your local timezone (${userTimeZone}). Naive timestamps are treated as local; UTC/Zulu timestamps are converted to your timezone.`;
   initializeCollapsibles();
   initializeSettings();
+  // Initialize columns visibility from prefs and render the Columns panel
+  initializeVisibleColumnsFromPrefs();
+  initializeColumnOrderFromPrefs();
+  renderColumnsPanel();
   // Sidebar removed — use section header clicks and Search Tools tabs for navigation
   // Move previously top-level Help/Filters/Extractors into the Search Tools tabbed panel
   moveSearchContentIntoTabs();
