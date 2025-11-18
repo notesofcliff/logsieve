@@ -151,30 +151,22 @@
               <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Saved Filters</h3>
               <p>Save and reuse filter combinations for common queries:</p>
               <ul style="margin:8px 0; padding-left:20px">
-                <li><strong>Save Current Filter</strong> - After setting up filters in the Filters & Sort section, click "💾 Save Current Filter"</li>
-                <li><strong>Apply Saved Filter</strong> - Click the "Apply" button next to any saved filter to instantly load those settings</li>
-                <li><strong>Manage Filters</strong> - Edit names/descriptions or delete filters you no longer need</li>
+                <li><strong>Save Current Filter</strong> - After setting up filters in the Filters & Sort section, click "Save Current Filter"</li>
+                <li><strong>Apply Saved Filter</strong> - Choose a saved filter from the dropdown and click "Load & Apply" to instantly apply those settings, or "Load into Filters" to load without applying</li>
+                <li><strong>Manage Filters</strong> - Expand the Saved Filters details to edit names/descriptions or delete filters you no longer need</li>
               </ul>
               <p><strong>Tip:</strong> Filter presets capture all settings including builder rules, Advanced Query, and sort order.</p>
               <p>Saved filters persist both Builder rules and the text form of Advanced Query so you can reapply exact searches later. If a saved filter contains invalid settings (missing builder values, etc) we will restore as much as possible and leave blank fields for you to fix before reapplying.</p>
               
-              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Summary</h3>
-              <p>Get a quick overview of your log data:</p>
+              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Results</h3>
+              <p>View and interact with your filtered log data. Above the table, get a quick overview:</p>
               <ul style="margin:8px 0; padding-left:20px">
                 <li><strong>Statistics</strong> - See total row count and breakdown by log level (INFO, WARN, ERROR)</li>
                 <li><strong>File Info</strong> - View the filename, total line count, and active filters</li>
                 <li><strong>Timeline Sparkline</strong> - Visual chart showing log activity over time (grouped by minute)</li>
               </ul>
+              <p>The table displays ID, Timestamp, Level, Message, and any extracted fields as columns. Navigate through results using pagination buttons or see current page info. Click "raw" details toggle on any row to see the original log line. Multi-line events like stack traces are kept together as single entries.</p>
               <p><strong>Note:</strong> Statistics update automatically whenever you apply filters or load new data.</p>
-              
-              <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Results</h3>
-              <p>View and interact with your filtered log data:</p>
-              <ul style="margin:8px 0; padding-left:20px">
-                <li><strong>Table View</strong> - Displays ID, Timestamp, Level, Message, and any extracted fields as columns</li>
-                <li><strong>Pagination</strong> - Navigate through results using ⏮ ◀ ▶ ⏭ buttons or see current page info</li>
-                <li><strong>Raw Data</strong> - Click "raw" details toggle on any row to see the original log line</li>
-                <li><strong>Multi-line Events</strong> - Stack traces and exceptions are kept together as single entries</li>
-              </ul>
               <p><strong>Tip:</strong> This section is always visible so you can see your data while working with other sections.</p>
 
               <h4 style="margin-top:1rem; font-size:14px; color:var(--ink)">Tips & Troubleshooting</h4>
@@ -187,9 +179,9 @@
               <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Import/Export</h3>
               <p>Share your work or backup your configuration:</p>
               <ul style="margin:8px 0; padding-left:20px">
-                <li><strong>Export Data</strong> - Save filtered results as JSON or CSV files (top header buttons)</li>
-                <li><strong>Export Library</strong> - Backup all your extractors and saved filters to a JSON file</li>
-                <li><strong>Import Library</strong> - Load extractors and filters from a JSON file (choose merge or replace)</li>
+                <li><strong>Export Data</strong> - Save filtered results as JSON or CSV files under Tools > Data in the top header</li>
+                <li><strong>Export Library</strong> - Backup all your extractors and saved filters to a JSON file under Tools > Library > Export</li>
+                <li><strong>Import Library</strong> - Load extractors and filters from a JSON file under Tools > Library > Import (choose merge or replace)</li>
               </ul>
               <p><strong>Privacy:</strong> All data stays in your browser. Nothing is sent to any server. Extractors and filters are saved in localStorage.</p>
               
