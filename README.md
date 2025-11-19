@@ -67,8 +67,9 @@ LogSieve consists of four main files:
 
 - **`index.html`**: Main HTML structure and UI elements
 - **`logsieve.css`**: Styling and visual design
-- **`logsieve.js`**: Core functionality and log processing logic
-- **`logsieve-worker.js`**: Worker specific code
+- **`logsieve.js`**: Core functionality and UI logic
+- **`logsieve-worker.js`**: Web Worker for heavy data processing
+- **`shared.js`**: Shared utilities and logic used by both main thread and worker
 
 The application uses vanilla JavaScript with no external dependencies. Recent enhancements include:
 
@@ -310,6 +311,8 @@ All log processing happens client-side, so user data never leaves their machine.
   - Upload panel moved to top and collapsible. After file parsing completes, Upload automatically collapses so Results are visible.
   - Help, Filters & Sort, and Extractor Library are now tabs inside a single collapsible "Search Tools" panel (collapsed by default). Click the Search Tools tabs or section headers to open the relevant panel.
   - When the user expands Search Tools, the default tab shown is now "Filters & Sort" (previously Help).
+- ✅ **Web Worker Offloading**: Heavy processing (parsing, filtering) moved to a background thread
+- ✅ **Shared Logic Module**: Common utilities and domain logic refactored into `shared.js` to reduce duplication
 
 ### Planned Enhancements
 - Chunked parsing for 100MB+ logs (via Web Workers)

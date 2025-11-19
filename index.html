@@ -1,11 +1,13 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
   <title>LogSieve — single‑file web app</title>
   <link rel="stylesheet" href="logsieve.css">
 </head>
+
 <body>
   <header>
     <div class="header-top">
@@ -81,127 +83,189 @@
           <div class="pad">
             <div style="font-size:13px; line-height:1.6; color:var(--muted)">
               <h3 style="margin-top:0; font-size:15px; color:var(--ink)">Getting Started</h3>
-              <p>LogSieve is a powerful log analysis tool that runs entirely in your browser. Use the section headers or Search Tools tabs to navigate between sections, and click section headers to expand/collapse them. The Results section is always visible so you can see your data while working.</p>
-              
+              <p>LogSieve is a powerful log analysis tool that runs entirely in your browser. Use the section headers or
+                Search Tools tabs to navigate between sections, and click section headers to expand/collapse them. The
+                Results section is always visible so you can see your data while working.</p>
+
               <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Upload</h3>
               <p>Load your log files to start analyzing. LogSieve supports multiple formats:</p>
               <ul style="margin:8px 0; padding-left:20px">
-                <li><strong>Plain text logs (.log, .txt)</strong> - Automatically detects timestamps, log levels, and multi-line events like stack traces</li>
+                <li><strong>Plain text logs (.log, .txt)</strong> - Automatically detects timestamps, log levels, and
+                  multi-line events like stack traces</li>
                 <li><strong>JSON files (.json)</strong> - Parses structured JSON data with automatic field mapping</li>
                 <li><strong>NDJSON files (.ndjson)</strong> - Newline-delimited JSON for streaming logs</li>
                 <li><strong>CSV files (.csv)</strong> - Imports tabular data with header row detection</li>
               </ul>
-              <p><strong>How to use:</strong> Drag and drop your file onto the upload area, or click "Browse..." to select a file. All processing happens in your browser - no data is uploaded to any server.</p>
-              
+              <p><strong>How to use:</strong> Drag and drop your file onto the upload area, or click "Browse..." to
+                select a file. All processing happens in your browser - no data is uploaded to any server.</p>
+
               <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Filters & Sort</h3>
-              <p>Narrow down your logs to find exactly what you need. LogSieve now uses an extensible Query Builder for structured filtering plus an Advanced Query input for free-form queries. Both are applied together when you click <strong>Apply</strong>.</p>
+              <p>Narrow down your logs to find exactly what you need. LogSieve now uses an extensible Query Builder for
+                structured filtering plus an Advanced Query input for free-form queries. Both are applied together when
+                you click <strong>Apply</strong>.</p>
               <ul style="margin:8px 0; padding-left:20px">
-                <li><strong>Builder rules</strong> - Create structured rules by choosing a Field, Operator and Value. Use logical operators (AND/OR) between rules. The builder is the primary filter UI and is visible by default.</li>
-                <li><strong>Advanced Query</strong> - Use the Advanced Query for free-form text search and regular expressions. This is now a full-width area below the Query Builder and is applied together with builder rules.</li>
+                <li><strong>Builder rules</strong> - Create structured rules by choosing a Field, Operator and Value.
+                  Use logical operators (AND/OR) between rules. The builder is the primary filter UI and is visible by
+                  default.</li>
+                <li><strong>Advanced Query</strong> - Use the Advanced Query for free-form text search and regular
+                  expressions. This is now a full-width area below the Query Builder and is applied together with
+                  builder rules.</li>
                 <li><strong>Sort</strong> - Order results by ID, timestamp, level, or any extracted field</li>
                 <li><strong>Page Size</strong> - Control how many results appear per page (25-200)</li>
               </ul>
-              <p><strong>Tip:</strong> Click <strong>Apply</strong> after changing filters; the Builder and Advanced Query are applied together to allow flexible AND/OR combinations. Use "Clear filters" to reset the builder and advanced query.</p>
+              <p><strong>Tip:</strong> Click <strong>Apply</strong> after changing filters; the Builder and Advanced
+                Query are applied together to allow flexible AND/OR combinations. Use "Clear filters" to reset the
+                builder and advanced query.</p>
 
               <h4 style="margin-top:1rem; font-size:14px; color:var(--ink)">Query Builder</h4>
-              <p>The Query Builder is an intuitive way to create structured filters without needing to remember syntax. A rule contains three parts:</p>
+              <p>The Query Builder is an intuitive way to create structured filters without needing to remember syntax.
+                A rule contains three parts:</p>
               <ul style="margin:8px 0; padding-left:20px">
-                <li><strong>Field</strong> - Choose a field (standard fields: <em>level</em>, <em>ts</em>, <em>message</em>, <em>raw</em> or any extracted field)</li>
-                <li><strong>Operator</strong> - Operators are type-aware (text, numeric, date, array). Examples: equals, contains, &gt;, &lt;, before, after, between</li>
-                <li><strong>Value</strong> - Enter or pick a value. For date fields the builder shows a datetime picker and the <strong>between</strong> operator displays two pickers (start and end)</li>
+                <li><strong>Field</strong> - Choose a field (standard fields: <em>level</em>, <em>ts</em>,
+                  <em>message</em>, <em>raw</em> or any extracted field)</li>
+                <li><strong>Operator</strong> - Operators are type-aware (text, numeric, date, array). Examples: equals,
+                  contains, &gt;, &lt;, before, after, between</li>
+                <li><strong>Value</strong> - Enter or pick a value. For date fields the builder shows a datetime picker
+                  and the <strong>between</strong> operator displays two pickers (start and end)</li>
               </ul>
-              <p>Use the logic selector between rules to chain them with <em>AND</em> or <em>OR</em>. Click the <strong>Add Rule</strong> button to add a new rule; builder changes do not automatically apply until you click <strong>Apply</strong>.</p>
+              <p>Use the logic selector between rules to chain them with <em>AND</em> or <em>OR</em>. Click the
+                <strong>Add Rule</strong> button to add a new rule; builder changes do not automatically apply until you
+                click <strong>Apply</strong>.</p>
 
               <h4 style="margin-top:1rem; font-size:14px; color:var(--ink)">Advanced Text Query</h4>
-              <p>For users who prefer a textual interface, the Advanced Query supports a compact syntax to express field filters and boolean logic:</p>
+              <p>For users who prefer a textual interface, the Advanced Query supports a compact syntax to express field
+                filters and boolean logic:</p>
               <ul style="margin:8px 0; padding-left:20px">
                 <li><code>field:value</code> — field matcher. For example: <code>level:ERROR</code></li>
-                <li>Operators like <code>&gt;=</code>, <code>&lt;</code> and range queries like <code>ts:2025-11-13..2025-11-14</code> (see the syntax helper)</li>
+                <li>Operators like <code>&gt;=</code>, <code>&lt;</code> and range queries like
+                  <code>ts:2025-11-13..2025-11-14</code> (see the syntax helper)</li>
                 <li><code>AND</code> and <code>OR</code> combine expressions</li>
               </ul>
-              <p><strong>Important:</strong> The Advanced Query is validated live but is only applied when you click <strong>Apply</strong>, keeping it separate from the builder. Saved filters remember both Builder rules and the Advanced Query.</p>
+              <p><strong>Important:</strong> The Advanced Query is validated live but is only applied when you click
+                <strong>Apply</strong>, keeping it separate from the builder. Saved filters remember both Builder rules
+                and the Advanced Query.</p>
 
               <h4 style="margin-top:1rem; font-size:14px; color:var(--ink)">Timestamps & Timezones</h4>
-              <p>LogSieve detects timestamp formats and tries to normalize them for consistent filtering and display. Key behaviors:</p>
+              <p>LogSieve detects timestamp formats and tries to normalize them for consistent filtering and display.
+                Key behaviors:</p>
               <ul style="margin:8px 0; padding-left:20px">
-                <li>If a timestamp includes an explicit timezone (e.g. <code>2025-11-13T10:30:00.000Z</code>), it is parsed as UTC and we convert it to your local timezone for display</li>
-                <li>Naive timestamps (no timezone) like <code>2025-11-13 10:30:20.345</code> are treated as local timestamps</li>
-                <li>The Results table shows timestamps in your detected local timezone; a small note above the table displays your current timezone</li>
-                <li>Filtering and date comparisons are done using canonical ISO times, but the UI uses local time for input and display for better intuition</li>
+                <li>If a timestamp includes an explicit timezone (e.g. <code>2025-11-13T10:30:00.000Z</code>), it is
+                  parsed as UTC and we convert it to your local timezone for display</li>
+                <li>Naive timestamps (no timezone) like <code>2025-11-13 10:30:20.345</code> are treated as local
+                  timestamps</li>
+                <li>The Results table shows timestamps in your detected local timezone; a small note above the table
+                  displays your current timezone</li>
+                <li>Filtering and date comparisons are done using canonical ISO times, but the UI uses local time for
+                  input and display for better intuition</li>
               </ul>
-              
+
               <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Extractor Library</h3>
               <p>Extract structured data from unstructured logs using regular expressions with named groups:</p>
               <ul style="margin:8px 0; padding-left:20px">
-                <li><strong>Create Extractors</strong> - Click "+ New Extractor" to define a regex pattern with named groups like <code>(?&lt;user&gt;\w+)</code></li>
-                <li><strong>Activate Extractors</strong> - Check the boxes next to extractors you want to use, then click "▶ Run Active"</li>
-                <li><strong>Apply Scope</strong> - Choose whether to apply extractors to "All rows" or only "Filtered rows"</li>
-                <li><strong>Merge Strategy</strong> - Control how overlapping field names are handled when multiple extractors match:
+                <li><strong>Create Extractors</strong> - Click "+ New Extractor" to define a regex pattern with named
+                  groups like <code>(?&lt;user&gt;\w+)</code></li>
+                <li><strong>Activate Extractors</strong> - Check the boxes next to extractors you want to use, then
+                  click "▶ Run Active"</li>
+                <li><strong>Apply Scope</strong> - Choose whether to apply extractors to "All rows" or only "Filtered
+                  rows"</li>
+                <li><strong>Merge Strategy</strong> - Control how overlapping field names are handled when multiple
+                  extractors match:
                   <ul style="margin:4px 0; padding-left:20px">
                     <li><em>Last Wins</em> - Later extractors override earlier ones</li>
                     <li><em>First Wins</em> - Keep first captured value</li>
                     <li><em>Merge</em> - Combine values (currently same as last-wins)</li>
                   </ul>
                 </li>
-                <li><strong>Quick Test</strong> - Use the collapsible "Quick Test" section to try a pattern once without saving</li>
+                <li><strong>Quick Test</strong> - Use the collapsible "Quick Test" section to try a pattern once without
+                  saving</li>
               </ul>
-              <p style="margin-top:8px">When extractors create new fields, the builder will automatically surface unique values for that field as suggestions (click a value or use the datalist). This speeds up creating precise filters.</p>
-              <p><strong>Tip:</strong> Extracted fields become sortable columns in the Results table and export cleanly to CSV/JSON.</p>
+              <p style="margin-top:8px">When extractors create new fields, the builder will automatically surface unique
+                values for that field as suggestions (click a value or use the datalist). This speeds up creating
+                precise filters.</p>
+              <p><strong>Tip:</strong> Extracted fields become sortable columns in the Results table and export cleanly
+                to CSV/JSON.</p>
               <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Columns</h3>
-              <p>The <strong>Columns</strong> panel (Search Tools → Columns) lets you control which fields appear in the Results table and in what order.</p>
+              <p>The <strong>Columns</strong> panel (Search Tools → Columns) lets you control which fields appear in the
+                Results table and in what order.</p>
               <ul style="margin:8px 0; padding-left:20px">
-                <li><strong>Show / hide:</strong> Use the checkboxes to toggle columns on or off. Columns are shown by default.</li>
-                <li><strong>Reorder:</strong> Drag the ≡ handle next to a column to move it — the Results table will update to match the new order.</li>
-                <li><strong>Persistence:</strong> Your column visibility and order are saved in your browser so they persist across sessions.</li>
-                <li><strong>New fields:</strong> When extractors add new fields they will be appended to your column order so you can enable and reposition them.</li>
-                <li><strong>Export:</strong> JSON and CSV exports respect the current column order and only include visible columns.</li>
+                <li><strong>Show / hide:</strong> Use the checkboxes to toggle columns on or off. Columns are shown by
+                  default.</li>
+                <li><strong>Reorder:</strong> Drag the ≡ handle next to a column to move it — the Results table will
+                  update to match the new order.</li>
+                <li><strong>Persistence:</strong> Your column visibility and order are saved in your browser so they
+                  persist across sessions.</li>
+                <li><strong>New fields:</strong> When extractors add new fields they will be appended to your column
+                  order so you can enable and reposition them.</li>
+                <li><strong>Export:</strong> JSON and CSV exports respect the current column order and only include
+                  visible columns.</li>
               </ul>
-              <p style="margin-top:6px; color:var(--muted); font-size:13px">Keyboard reordering is not currently implemented — open an issue if you'd like keyboard accessibility added.</p>
-              
+              <p style="margin-top:6px; color:var(--muted); font-size:13px">Keyboard reordering is not currently
+                implemented — open an issue if you'd like keyboard accessibility added.</p>
+
               <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Saved Filters</h3>
               <p>Save and reuse filter combinations for common queries:</p>
               <ul style="margin:8px 0; padding-left:20px">
-                <li><strong>Save Current Filter</strong> - After setting up filters in the Filters & Sort section, click "Save Current Filter"</li>
-                <li><strong>Apply Saved Filter</strong> - Choose a saved filter from the dropdown and click "Load & Apply" to instantly apply those settings, or "Load into Filters" to load without applying</li>
-                <li><strong>Manage Filters</strong> - Expand the Saved Filters details to edit names/descriptions or delete filters you no longer need</li>
+                <li><strong>Save Current Filter</strong> - After setting up filters in the Filters & Sort section, click
+                  "Save Current Filter"</li>
+                <li><strong>Apply Saved Filter</strong> - Choose a saved filter from the dropdown and click "Load &
+                  Apply" to instantly apply those settings, or "Load into Filters" to load without applying</li>
+                <li><strong>Manage Filters</strong> - Expand the Saved Filters details to edit names/descriptions or
+                  delete filters you no longer need</li>
               </ul>
-              <p><strong>Tip:</strong> Filter presets capture all settings including builder rules, Advanced Query, and sort order.</p>
-              <p>Saved filters persist both Builder rules and the text form of Advanced Query so you can reapply exact searches later. If a saved filter contains invalid settings (missing builder values, etc) we will restore as much as possible and leave blank fields for you to fix before reapplying.</p>
-              
+              <p><strong>Tip:</strong> Filter presets capture all settings including builder rules, Advanced Query, and
+                sort order.</p>
+              <p>Saved filters persist both Builder rules and the text form of Advanced Query so you can reapply exact
+                searches later. If a saved filter contains invalid settings (missing builder values, etc) we will
+                restore as much as possible and leave blank fields for you to fix before reapplying.</p>
+
               <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Results</h3>
               <p>View and interact with your filtered log data. Above the table, get a quick overview:</p>
               <ul style="margin:8px 0; padding-left:20px">
-                <li><strong>Statistics</strong> - See total row count and breakdown by log level (INFO, WARN, ERROR)</li>
+                <li><strong>Statistics</strong> - See total row count and breakdown by log level (INFO, WARN, ERROR)
+                </li>
                 <li><strong>File Info</strong> - View the filename, total line count, and active filters</li>
-                <li><strong>Timeline Sparkline</strong> - Visual chart showing log activity over time (grouped by minute)</li>
+                <li><strong>Timeline Sparkline</strong> - Visual chart showing log activity over time (grouped by
+                  minute)</li>
               </ul>
-              <p>The table displays ID, Timestamp, Level, Message, and any extracted fields as columns. Navigate through results using pagination buttons or see current page info. Click "raw" details toggle on any row to see the original log line. Multi-line events like stack traces are kept together as single entries.</p>
+              <p>The table displays ID, Timestamp, Level, Message, and any extracted fields as columns. Navigate through
+                results using pagination buttons or see current page info. Click "raw" details toggle on any row to see
+                the original log line. Multi-line events like stack traces are kept together as single entries.</p>
               <p><strong>Note:</strong> Statistics update automatically whenever you apply filters or load new data.</p>
-              <p><strong>Tip:</strong> This section is always visible so you can see your data while working with other sections.</p>
+              <p><strong>Tip:</strong> This section is always visible so you can see your data while working with other
+                sections.</p>
 
               <h4 style="margin-top:1rem; font-size:14px; color:var(--ink)">Tips & Troubleshooting</h4>
               <ul style="margin:8px 0; padding-left:20px">
-                <li><strong>Timestamps off by a few hours?</strong> Confirm whether your log timestamps have a timezone (e.g., trailing <code>Z</code>). If so we convert them to your timezone for display. You can see the detected timezone above the results.</li>
-                <li><strong>Builder rule shows no results</strong> - ensure you filled in a value for the rule. Empty rule values are ignored when applying to avoid unexpected matches.</li>
-                <li><strong>Regex failing</strong> - test patterns in Quick Test first; named groups populate fields used in the Builder and results.</li>
+                <li><strong>Timestamps off by a few hours?</strong> Confirm whether your log timestamps have a timezone
+                  (e.g., trailing <code>Z</code>). If so we convert them to your timezone for display. You can see the
+                  detected timezone above the results.</li>
+                <li><strong>Builder rule shows no results</strong> - ensure you filled in a value for the rule. Empty
+                  rule values are ignored when applying to avoid unexpected matches.</li>
+                <li><strong>Regex failing</strong> - test patterns in Quick Test first; named groups populate fields
+                  used in the Builder and results.</li>
               </ul>
-              
+
               <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Import/Export</h3>
               <p>Share your work or backup your configuration:</p>
               <ul style="margin:8px 0; padding-left:20px">
-                <li><strong>Export Data</strong> - Save filtered results as JSON or CSV files under Tools > Data in the top header</li>
-                <li><strong>Export Library</strong> - Backup all your extractors and saved filters to a JSON file under Tools > Library > Export</li>
-                <li><strong>Import Library</strong> - Load extractors and filters from a JSON file under Tools > Library > Import (choose merge or replace)</li>
+                <li><strong>Export Data</strong> - Save filtered results as JSON or CSV files under Tools > Data in the
+                  top header</li>
+                <li><strong>Export Library</strong> - Backup all your extractors and saved filters to a JSON file under
+                  Tools > Library > Export</li>
+                <li><strong>Import Library</strong> - Load extractors and filters from a JSON file under Tools > Library
+                  > Import (choose merge or replace)</li>
               </ul>
-              <p><strong>Privacy:</strong> All data stays in your browser. Nothing is sent to any server. Extractors and filters are saved in localStorage.</p>
-              
+              <p><strong>Privacy:</strong> All data stays in your browser. Nothing is sent to any server. Extractors and
+                filters are saved in localStorage.</p>
+
               <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Keyboard Shortcuts</h3>
               <ul style="margin:8px 0; padding-left:20px">
                 <li><strong>ESC</strong> - Close any open modal dialog</li>
               </ul>
-              
+
               <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Theme</h3>
-              <p>Click the 🌙/☀️ button in the top header to toggle between dark and light themes. Your preference is saved automatically.</p>
+              <p>Click the 🌙/☀️ button in the top header to toggle between dark and light themes. Your preference is
+                saved automatically.</p>
             </div>
           </div>
         </div>
@@ -228,9 +292,11 @@
                 <div class="tab-panel" id="tab-columns" role="tabpanel" style="display:none">
                   <div class="pad">
                     <h3 style="margin-top:0; font-size:15px">Columns</h3>
-                    <p style="margin:6px 0 12px 0; color:var(--muted); font-size:13px">Toggle which columns are visible in the Results table.</p>
+                    <p style="margin:6px 0 12px 0; color:var(--muted); font-size:13px">Toggle which columns are visible
+                      in the Results table.</p>
                     <div id="columnsList" class="library-list">
-                      <div class="empty-state">No columns available yet. Load a file or run extractors to populate columns.</div>
+                      <div class="empty-state">No columns available yet. Load a file or run extractors to populate
+                        columns.</div>
                     </div>
                   </div>
                 </div>
@@ -274,9 +340,9 @@
                 </select>
               </label>
             </div>
-              <div class="flex" style="margin-top:10px">
-                <span class="right pill" id="info">—</span>
-              </div>
+            <div class="flex" style="margin-top:10px">
+              <span class="right pill" id="info">—</span>
+            </div>
             <!-- Query Builder (initially hidden until toggled) -->
             <div id="filterBuilder" style="margin-top:16px; display:block;">
               <div id="rulesContainer"></div>
@@ -289,7 +355,8 @@
             <!-- Advanced Query: full width below the builder -->
             <div style="margin-top:18px">
               <label class="wide"> Advanced Text Query (applied in addition to Builder)
-                <textarea id="textQuery" placeholder="Enter advanced query syntax (e.g. level:ERROR AND user:alice)" rows="3" style="width:100%; box-sizing:border-box; resize:vertical;"></textarea>
+                <textarea id="textQuery" placeholder="Enter advanced query syntax (e.g. level:ERROR AND user:alice)"
+                  rows="3" style="width:100%; box-sizing:border-box; resize:vertical;"></textarea>
               </label>
               <div id="queryFields" style="margin-top:6px; display:flex; gap:8px; flex-wrap:wrap"></div>
               <div id="queryError" style="color: #ffb4b4; font-size:12px; margin-top:6px"></div>
@@ -330,10 +397,11 @@
               <button class="btn" id="apply">Apply</button>
               <button class="btn ghost" id="clear">Clear filters</button>
             </div>
-            
+
             <!-- Save Current Filter moved to bottom of Filters & Sort -->
             <div class="flex" style="margin-top:12px">
-              <button class="btn" id="saveCurrentFilter" title="Save the current filter settings as a preset">Save Current Filter</button>
+              <button class="btn" id="saveCurrentFilter" title="Save the current filter settings as a preset">Save
+                Current Filter</button>
               <span class="right pill" id="filterLibInfo">—</span>
             </div>
           </div>
@@ -349,7 +417,8 @@
           <div class="pad">
             <div class="flex" style="margin-bottom:10px">
               <button class="btn" id="addExtractor" title="Create a new regex extractor">+ New Extractor</button>
-              <button class="btn ghost" id="runActiveExtractors" title="Apply all checked extractors">Run Active</button>
+              <button class="btn ghost" id="runActiveExtractors" title="Apply all checked extractors">Run
+                Active</button>
               <label style="margin-left:10px"> Apply to
                 <select id="extractScope" title="Choose whether to apply extractors to all rows or only filtered rows">
                   <option value="all">All rows</option>
@@ -364,7 +433,7 @@
               </div>
               <div class="progress-text" id="extractorProgressText">Running extractors...</div>
             </div>
-            
+
             <div class="controls" style="margin-bottom:10px">
               <label> Merge Strategy
                 <select id="mergeStrategy" title="How to handle when multiple extractors capture the same field">
@@ -374,10 +443,11 @@
                 </select>
               </label>
               <div style="font-size:0.85em; color:var(--muted); margin-top:5px; line-height:1.4">
-                When multiple active extractors capture the same field name, this setting determines which value is kept.
+                When multiple active extractors capture the same field name, this setting determines which value is
+                kept.
               </div>
             </div>
-            
+
             <div id="extractorList" class="library-list">
               <div class="empty-state">No extractors saved. Click "+ New Extractor" to create one.</div>
             </div>
@@ -386,14 +456,15 @@
               <summary style="cursor:pointer; font-weight:500">Quick Test (one-time pattern)</summary>
               <div class="controls" style="margin-top:10px">
                 <label class="wide"> Pattern
-                  <input type="text" id="extractPattern" placeholder="^\[(?<ts>[^\]]+)\]\s(?<level>\w+)\s(?<message>.*)$" />
+                  <input type="text" id="extractPattern"
+                    placeholder="^\[(?<ts>[^\]]+)\]\s(?<level>\w+)\s(?<message>.*)$" />
                 </label>
               </div>
               <div class="flex" style="margin-top:10px">
                 <button class="btn" id="runExtract">Test Pattern</button>
               </div>
             </details>
-            
+
           </div>
         </div>
       </section>
@@ -410,10 +481,22 @@
         <div class="section-content">
           <div class="pad">
             <div class="stats" style="margin-bottom:12px">
-              <div class="stat"><div class="k">Rows</div><div class="v" id="sRows">0</div></div>
-              <div class="stat ok"><div class="k">INFO</div><div class="v" id="sInfo">0</div></div>
-              <div class="stat warn"><div class="k">WARN</div><div class="v" id="sWarn">0</div></div>
-              <div class="stat err"><div class="k">ERROR</div><div class="v" id="sErr">0</div></div>
+              <div class="stat">
+                <div class="k">Rows</div>
+                <div class="v" id="sRows">0</div>
+              </div>
+              <div class="stat ok">
+                <div class="k">INFO</div>
+                <div class="v" id="sInfo">0</div>
+              </div>
+              <div class="stat warn">
+                <div class="k">WARN</div>
+                <div class="v" id="sWarn">0</div>
+              </div>
+              <div class="stat err">
+                <div class="k">ERROR</div>
+                <div class="v" id="sErr">0</div>
+              </div>
             </div>
             <div class="tags" style="margin-bottom:12px">
               <span class="tag" id="fileTag">no file</span>
@@ -431,7 +514,8 @@
               </div>
               <span class="right pill" id="renderInfo">—</span>
             </div>
-            <div id="tzInfo" style="font-size:12px; color:var(--muted); margin-bottom:8px;">Times shown in UTC by default</div>
+            <div id="tzInfo" style="font-size:12px; color:var(--muted); margin-bottom:8px;">Times shown in UTC by
+              default</div>
             <div class="table-container">
               <table>
                 <thead>
@@ -463,7 +547,8 @@
           <input type="text" id="extractorName" placeholder="e.g., Apache Access Log" />
         </label>
         <label>Pattern (regex with named groups)
-          <textarea id="extractorPattern" rows="3" placeholder="^\[(?<ts>[^\]]+)\]\s(?<level>\w+)\s(?<message>.*)$"></textarea>
+          <textarea id="extractorPattern" rows="3"
+            placeholder="^\[(?<ts>[^\]]+)\]\s(?<level>\w+)\s(?<message>.*)$"></textarea>
         </label>
         <label>Description (optional)
           <input type="text" id="extractorDesc" placeholder="Brief description of what this extracts" />
@@ -506,6 +591,9 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <script src="shared.js"></script>
   <script src="logsieve.js"></script>
 </body>
+
 </html>
