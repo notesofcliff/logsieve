@@ -196,8 +196,14 @@ Features:
 - Datalist suggestions populated from observed values for extracted fields
 
 ### Advanced Text Query
-
-For power users who prefer text queries, LogSieve provides an Advanced Query area supporting compact syntax such as `field:value`, comparison operators (`>`, `<`, `>=`, `<=`, `!=`), and quoted strings. You can combine expressions with `AND` and `OR`. Advanced queries are validated on Apply and applied together with the Builder rules so you can mix visual and textual filters.
+For power users, the text input supports a rich query syntax:
+- **Field Search:** `level:ERROR`, `status:500` (defaults to contains)
+- **Boolean Logic:** `AND`, `OR`, `NOT` (e.g., `level:ERROR OR level:WARN`)
+- **Grouping:** Use parentheses to group logic: `(level:ERROR OR level:WARN) AND app:backend`
+- **Wildcards:** Use `*` for partial matches: `user:admin*`, `path:*/api/*`
+- **Comparison:** `latency>100`, `code!=200`
+- **Quoted Strings:** `message:"connection failed"`
+- **Free Text:** Words not in `field:value` format are treated as "quick search" terms. expressions with `AND` and `OR`. Advanced queries are validated on Apply and applied together with the Builder rules so you can mix visual and textual filters.
 
 ### Field Extraction
 

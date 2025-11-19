@@ -122,7 +122,8 @@
                 A rule contains three parts:</p>
               <ul style="margin:8px 0; padding-left:20px">
                 <li><strong>Field</strong> - Choose a field (standard fields: <em>level</em>, <em>ts</em>,
-                  <em>message</em>, <em>raw</em> or any extracted field)</li>
+                  <em>message</em>, <em>raw</em> or any extracted field)
+                </li>
                 <li><strong>Operator</strong> - Operators are type-aware (text, numeric, date, array). Examples: equals,
                   contains, &gt;, &lt;, before, after, between</li>
                 <li><strong>Value</strong> - Enter or pick a value. For date fields the builder shows a datetime picker
@@ -130,20 +131,25 @@
               </ul>
               <p>Use the logic selector between rules to chain them with <em>AND</em> or <em>OR</em>. Click the
                 <strong>Add Rule</strong> button to add a new rule; builder changes do not automatically apply until you
-                click <strong>Apply</strong>.</p>
+                click <strong>Apply</strong>.
+              </p>
 
               <h4 style="margin-top:1rem; font-size:14px; color:var(--ink)">Advanced Text Query</h4>
               <p>For users who prefer a textual interface, the Advanced Query supports a compact syntax to express field
                 filters and boolean logic:</p>
               <ul style="margin:8px 0; padding-left:20px">
-                <li><code>field:value</code> — field matcher. For example: <code>level:ERROR</code></li>
-                <li>Operators like <code>&gt;=</code>, <code>&lt;</code> and range queries like
-                  <code>ts:2025-11-13..2025-11-14</code> (see the syntax helper)</li>
-                <li><code>AND</code> and <code>OR</code> combine expressions</li>
+                <li><strong>Field Search:</strong> <code>field:value</code> (e.g., <code>level:ERROR</code>)</li>
+                <li><strong>Boolean Logic:</strong> <code>AND</code>, <code>OR</code>, <code>NOT</code></li>
+                <li><strong>Grouping:</strong> <code>(level:ERROR OR level:WARN) AND app:main</code></li>
+                <li><strong>Wildcards:</strong> <code>*</code> (e.g., <code>user:admin*</code>)</li>
+                <li><strong>Comparisons:</strong> <code>&gt;</code>, <code>&lt;</code>, <code>=</code>, <code>!=</code>
+                  (e.g., <code>latency&gt;500</code>)</li>
+                <li><strong>Quotes:</strong> Use quotes for spaces: <code>msg:"connection failed"</code></li>
               </ul>
               <p><strong>Important:</strong> The Advanced Query is validated live but is only applied when you click
                 <strong>Apply</strong>, keeping it separate from the builder. Saved filters remember both Builder rules
-                and the Advanced Query.</p>
+                and the Advanced Query.
+              </p>
 
               <h4 style="margin-top:1rem; font-size:14px; color:var(--ink)">Timestamps & Timezones</h4>
               <p>LogSieve detects timestamp formats and tries to normalize them for consistent filtering and display.

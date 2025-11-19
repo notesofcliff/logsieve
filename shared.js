@@ -490,7 +490,18 @@ function evaluateRules(row, rules) {
 }
 
 function applyFilterConfig(rows, filterConfig, progressCallback = null) {
+    if (!filterConfig) return rows;
+
     let filteredRows = rows;
+
+    // Handle v3 AST (Advanced Query)
+    if (filterConfig.version === 3 && filterConfig.ast) {
+        if (progressCallback) progressCallback(30, 'Applying advanced query...');
+        filteredRows = filteredRows.filter(row => evaluateAST(row, filterConfig.ast));
+        return filteredRows;
+    }
+
+    // Handle v2 Rules (Builder)
     if (filterConfig.quickSearch && filterConfig.quickSearch.trim()) {
         if (progressCallback) progressCallback(10, 'Applying quick search...');
         const terms = filterConfig.quickSearch.toLowerCase().split(/\s+/);
@@ -636,6 +647,15 @@ function runMultipleExtractors(extractors, scope, mergeStrategy = 'last-wins', p
  * Supports simple field:value tokens, comparison operators, quoted strings,
  * AND/OR logic, and minimal prefix operators (^ for startsWith, $ for endsWith)
  */
+/**
+ * Query Parser - Recursive Descent Parser for Advanced Queries
+ * Supports:
+ * - Boolean Logic: AND, OR, NOT
+ * - Grouping: ( ... )
+ * - Fields: field:value, field>10, etc.
+ * - Wildcards: * (converts to regex)
+ * - Quoted strings
+ */
 class QueryParser {
     constructor(queryString) {
         this.query = queryString || '';
@@ -645,7 +665,7 @@ class QueryParser {
 
     tokenize() {
         const patterns = [
-            { type: 'FIELD_OP', regex: /(\w+):(>=|<=|!=|>|<|=)("[^"]*"|[^\s)]+)/y },
+            { type: 'FIELD_OP', regex: /(\w+)(:|)(>=|<=|!=|>|<|=)("[^"]*"|[^\s)]+)/y },
             { type: 'FIELD', regex: /(\w+):("[^"]*"|[^\s)]+)/y },
             { type: 'STRING', regex: /"([^"]*)"/y },
             { type: 'AND', regex: /\bAND\b/iy },
@@ -669,14 +689,13 @@ class QueryParser {
                     const token = { type: p.type, raw: m[0] };
                     if (p.type === 'FIELD_OP') {
                         token.field = m[1];
-                        token.operator = this._mapOperator(m[2]);
-                        token.value = m[3].replace(/^"|"$/g, '');
+                        // m[2] is colon or empty, m[3] is operator, m[4] is value
+                        token.operator = this._mapOperator(m[3]);
+                        token.value = m[4].replace(/^"|"$/g, '');
                     } else if (p.type === 'FIELD') {
                         token.field = m[1];
-                        token.operator = 'contains';
                         token.value = m[2].replace(/^"|"$/g, '');
-                        if (token.value.startsWith('^')) { token.operator = 'startsWith'; token.value = token.value.slice(1); }
-                        if (token.value.endsWith('$')) { token.operator = 'endsWith'; token.value = token.value.slice(0, -1); }
+                        this._processWildcards(token);
                     } else if (p.type === 'WORD') {
                         token.value = m[0];
                     } else if (p.type === 'STRING') {
@@ -688,12 +707,8 @@ class QueryParser {
                     break;
                 }
             }
-            if (!matched) {
-                // Unknown character, skip
-                i++;
-            }
+            if (!matched) i++; // Skip unknown chars
         }
-
         return this.tokens;
     }
 
@@ -702,41 +717,131 @@ class QueryParser {
         return map[op] || 'equals';
     }
 
+    _processWildcards(token) {
+        if (token.value.includes('*')) {
+            token.operator = 'matches';
+            // Escape regex chars except *
+            let escaped = token.value.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+            // Replace * with .*
+            escaped = escaped.replace(/\*/g, '.*');
+            token.value = `^${escaped}$`;
+        } else {
+            token.operator = 'contains';
+            // Legacy prefix support
+            if (token.value.startsWith('^')) { token.operator = 'startsWith'; token.value = token.value.slice(1); }
+            if (token.value.endsWith('$')) { token.operator = 'endsWith'; token.value = token.value.slice(0, -1); }
+        }
+    }
+
     parse() {
         this.tokenize();
-        const rules = [];
-        let currentLogic = null;
+        this.pos = 0;
+        const ast = this.parseExpression();
+        return ast;
+    }
 
-        for (const token of this.tokens) {
-            if (token.type === 'FIELD' || token.type === 'FIELD_OP') {
-                rules.push({ id: generateUUID(), field: token.field, operator: token.operator, value: token.value, logic: currentLogic, enabled: true });
-                currentLogic = null;
-            } else if (token.type === 'AND') {
-                currentLogic = 'AND';
-            } else if (token.type === 'OR') {
-                currentLogic = 'OR';
-            } else if (token.type === 'WORD') {
-                // Treat plain word as quickSearch token - we'll handle externally
-            }
+    // Expression: Term { OR Term }
+    parseExpression() {
+        let left = this.parseTerm();
+        while (this.match('OR')) {
+            const right = this.parseTerm();
+            left = { type: 'LOGIC', operator: 'OR', left, right };
         }
-
-        if (rules.length > 0) rules[rules.length - 1].logic = null;
-        return rules;
+        return left;
     }
 
-    static compileToFilter(rules) {
-        return { version: 2, rules: rules, quickSearch: '' };
+    // Term: Factor { AND Factor }  (AND is optional/implicit)
+    parseTerm() {
+        let left = this.parseFactor();
+        // If next token is NOT OR and NOT RPAREN, it's an implicit AND
+        while (this.pos < this.tokens.length && this.peek().type !== 'OR' && this.peek().type !== 'RPAREN') {
+            if (this.match('AND')) {
+                // Explicit AND
+            }
+            const right = this.parseFactor();
+            left = { type: 'LOGIC', operator: 'AND', left, right };
+        }
+        return left;
     }
+
+    // Factor: ( Expression ) | NOT Factor | Rule
+    parseFactor() {
+        if (this.match('LPAREN')) {
+            const expr = this.parseExpression();
+            this.match('RPAREN');
+            return expr;
+        } else if (this.match('NOT')) {
+            const operand = this.parseFactor();
+            return { type: 'NOT', operand };
+        } else {
+            return this.parseRule();
+        }
+    }
+
+    parseRule() {
+        const token = this.consume();
+        if (!token) return null;
+
+        if (token.type === 'FIELD' || token.type === 'FIELD_OP') {
+            return { type: 'RULE', field: token.field, operator: token.operator, value: token.value };
+        } else if (token.type === 'WORD' || token.type === 'STRING') {
+            // Treat as quick search term on message/raw
+            return { type: 'RULE', field: 'raw', operator: 'contains', value: token.value };
+        }
+        return null;
+    }
+
+    peek() {
+        return this.tokens[this.pos];
+    }
+
+    match(type) {
+        if (this.pos < this.tokens.length && this.tokens[this.pos].type === type) {
+            this.pos++;
+            return true;
+        }
+        return false;
+    }
+
+    consume() {
+        return this.tokens[this.pos++];
+    }
+
+    static compileToFilter(ast) {
+        return { version: 3, ast: ast, quickSearch: '' };
+    }
+}
+
+/**
+ * Evaluate AST against a row
+ * @param {Object} row - Log row
+ * @param {Object} node - AST Node
+ * @returns {boolean}
+ */
+function evaluateAST(row, node) {
+    if (!node) return true;
+
+    if (node.type === 'LOGIC') {
+        const left = evaluateAST(row, node.left);
+        if (node.operator === 'AND') {
+            return left && evaluateAST(row, node.right);
+        } else if (node.operator === 'OR') {
+            return left || evaluateAST(row, node.right);
+        }
+    } else if (node.type === 'NOT') {
+        return !evaluateAST(row, node.operand);
+    } else if (node.type === 'RULE') {
+        return evaluateRule(row, node);
+    }
+    return true;
 }
 
 function parseAdvancedQuery(queryText) {
     if (!queryText || !queryText.trim()) return null;
     try {
         const parser = new QueryParser(queryText);
-        const rules = parser.parse();
-        // words are treated as quick search tokens
-        const words = parser.tokens.filter(t => t.type === 'WORD').map(t => t.value);
-        return { version: 2, rules, quickSearch: words.join(' ') };
+        const ast = parser.parse();
+        return QueryParser.compileToFilter(ast);
     } catch (e) {
         throw new Error('Query parse error: ' + (e.message || e));
     }
