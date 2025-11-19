@@ -201,9 +201,12 @@ For power users, the text input supports a rich query syntax:
 - **Boolean Logic:** `AND`, `OR`, `NOT` (e.g., `level:ERROR OR level:WARN`)
 - **Grouping:** Use parentheses to group logic: `(level:ERROR OR level:WARN) AND app:backend`
 - **Wildcards:** Use `*` for partial matches: `user:admin*`, `path:*/api/*`
+- **Regex:** Use slashes for regex: `message:/error \d+/` (use quotes if it contains spaces: `msg:"/fatal error/"`)
+- **Existence:** `has:field` (field exists/not empty), `missing:field` (field missing/empty)
+- **IN Operator:** `level:IN(ERROR, WARN, INFO)` - matches if field value is one of the listed values
 - **Comparison:** `latency>100`, `code!=200`
 - **Quoted Strings:** `message:"connection failed"`
-- **Free Text:** Words not in `field:value` format are treated as "quick search" terms. expressions with `AND` and `OR`. Advanced queries are validated on Apply and applied together with the Builder rules so you can mix visual and textual filters.
+- **Global Search:** Words or phrases not in `field:value` format search across the entire raw log line (e.g., `error` or `"fatal exception"`)
 
 ### Field Extraction
 

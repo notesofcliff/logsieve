@@ -142,9 +142,15 @@
                 <li><strong>Boolean Logic:</strong> <code>AND</code>, <code>OR</code>, <code>NOT</code></li>
                 <li><strong>Grouping:</strong> <code>(level:ERROR OR level:WARN) AND app:main</code></li>
                 <li><strong>Wildcards:</strong> <code>*</code> (e.g., <code>user:admin*</code>)</li>
+                <li><strong>Regex:</strong> <code>msg:/error \d+/</code> (quote if spaces:
+                  <code>msg:"/fatal error/"</code>)</li>
+                <li><strong>Existence:</strong> <code>has:field</code>, <code>missing:field</code></li>
+                <li><strong>IN Operator:</strong> <code>level:IN(ERROR, WARN, INFO)</code></li>
                 <li><strong>Comparisons:</strong> <code>&gt;</code>, <code>&lt;</code>, <code>=</code>, <code>!=</code>
                   (e.g., <code>latency&gt;500</code>)</li>
                 <li><strong>Quotes:</strong> Use quotes for spaces: <code>msg:"connection failed"</code></li>
+                <li><strong>Global Search:</strong> Words/phrases without <code>field:</code> search the raw log line
+                </li>
               </ul>
               <p><strong>Important:</strong> The Advanced Query is validated live but is only applied when you click
                 <strong>Apply</strong>, keeping it separate from the builder. Saved filters remember both Builder rules

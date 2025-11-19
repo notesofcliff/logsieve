@@ -297,6 +297,7 @@ const OPERATORS = {
         { value: 'startsWith', label: 'starts with', fn: (a, b) => String(a).toLowerCase().startsWith(String(b).toLowerCase()) },
         { value: 'endsWith', label: 'ends with', fn: (a, b) => String(a).toLowerCase().endsWith(String(b).toLowerCase()) },
         { value: 'matches', label: 'matches regex', fn: (a, b) => new RegExp(b, 'i').test(a) },
+        { value: 'in', label: 'is one of', fn: (a, b) => Array.isArray(b) && b.map(v => String(v).toLowerCase()).includes(String(a).toLowerCase()) },
         { value: 'empty', label: 'is empty', fn: (a) => !a || (Array.isArray(a) && a.length === 0) },
         { value: 'notEmpty', label: 'is not empty', fn: (a) => !!a && (!Array.isArray(a) || a.length > 0) }
     ],
@@ -665,6 +666,7 @@ class QueryParser {
 
     tokenize() {
         const patterns = [
+            { type: 'IN_OP', regex: /(\w+):IN\(([^)]+)\)/iy },
             { type: 'FIELD_OP', regex: /(\w+)(:|)(>=|<=|!=|>|<|=)("[^"]*"|[^\s)]+)/y },
             { type: 'FIELD', regex: /(\w+):("[^"]*"|[^\s)]+)/y },
             { type: 'STRING', regex: /"([^"]*)"/y },
@@ -687,15 +689,36 @@ class QueryParser {
                 if (m) {
                     matched = true;
                     const token = { type: p.type, raw: m[0] };
-                    if (p.type === 'FIELD_OP') {
+                    if (p.type === 'IN_OP') {
+                        token.type = 'FIELD_OP';
+                        token.field = m[1];
+                        token.operator = 'in';
+                        // Parse values: split by comma, trim, remove quotes
+                        token.value = m[2].split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+                    } else if (p.type === 'FIELD_OP') {
                         token.field = m[1];
                         // m[2] is colon or empty, m[3] is operator, m[4] is value
                         token.operator = this._mapOperator(m[3]);
                         token.value = m[4].replace(/^"|"$/g, '');
                     } else if (p.type === 'FIELD') {
-                        token.field = m[1];
-                        token.value = m[2].replace(/^"|"$/g, '');
-                        this._processWildcards(token);
+                        const field = m[1];
+                        const value = m[2].replace(/^"|"$/g, '');
+
+                        if (field === 'has') {
+                            token.type = 'FIELD_OP'; // Treat as a rule
+                            token.field = value;
+                            token.operator = 'notEmpty';
+                            token.value = '';
+                        } else if (field === 'missing') {
+                            token.type = 'FIELD_OP';
+                            token.field = value;
+                            token.operator = 'empty';
+                            token.value = '';
+                        } else {
+                            token.field = field;
+                            token.value = value;
+                            this._processValue(token);
+                        }
                     } else if (p.type === 'WORD') {
                         token.value = m[0];
                     } else if (p.type === 'STRING') {
@@ -717,7 +740,14 @@ class QueryParser {
         return map[op] || 'equals';
     }
 
-    _processWildcards(token) {
+    _processValue(token) {
+        // Regex literal: /pattern/
+        if (token.value.startsWith('/') && token.value.endsWith('/') && token.value.length > 2) {
+            token.operator = 'matches';
+            token.value = token.value.slice(1, -1);
+            return;
+        }
+
         if (token.value.includes('*')) {
             token.operator = 'matches';
             // Escape regex chars except *
