@@ -516,6 +516,121 @@ function applyFilterConfig(rows, filterConfig, progressCallback = null) {
 
 // ---------- Query Parser ----------
 
+// ---------- Pattern Extractor (shared) ----------
+/**
+ * Run a single extractor pattern on log data
+ * @param {string} pattern - Regex pattern with named groups
+ * @param {Array} scope - Array of log rows to process
+ * @param {string} mergeStrategy - How to merge fields: 'last-wins', 'first-wins', 'merge'
+ * @returns {number} - Number of rows with captures
+ */
+function runSingleExtractor(pattern, scope, mergeStrategy = 'last-wins') {
+    let re;
+    try {
+        re = new RegExp(pattern, 'g');
+    } catch (e) {
+        console.error('Invalid regex:', e.message, 'Pattern:', pattern);
+        return 0;
+    }
+
+    let hits = 0;
+
+    for (const r of scope) {
+        const matches = [...r.raw.matchAll(re)];
+        if (matches.length === 0) continue;
+
+        const groupValues = {};
+        for (const m of matches) {
+            const g = m.groups || {};
+            for (const [key, val] of Object.entries(g)) {
+                if (!groupValues[key]) groupValues[key] = [];
+                groupValues[key].push(val);
+            }
+        }
+
+        if (Object.keys(groupValues).length === 0) continue;
+
+        if (!r.fields) r.fields = {};
+
+        if (mergeStrategy === 'last-wins' || mergeStrategy === 'merge') {
+            r.fields = Object.assign({}, r.fields, groupValues);
+        } else if (mergeStrategy === 'first-wins') {
+            for (const [key, val] of Object.entries(groupValues)) {
+                if (!(key in r.fields)) {
+                    r.fields[key] = val;
+                }
+            }
+        }
+
+        hits++;
+
+        for (const key of Object.keys(groupValues)) {
+            if (typeof fieldNames !== 'undefined' && key !== 'ts' && key !== 'level' && key !== 'message') {
+                try { fieldNames.add(key); } catch (e) { /* ignore if fieldNames not set yet */ }
+            }
+        }
+
+        if (groupValues.ts && groupValues.ts.length > 0) {
+            const iso = parseTimestampToISO(groupValues.ts[0]);
+            if (iso) r.ts = iso;
+        }
+        if (groupValues.level && groupValues.level.length > 0) {
+            r.level = String(groupValues.level[0]).toUpperCase();
+            if (r.level === 'WARN') r.level = 'WARNING';
+        }
+        if (groupValues.message && groupValues.message.length > 0) {
+            r.message = groupValues.message[0];
+        }
+    }
+
+    return hits;
+}
+
+/**
+ * Run multiple extractors on log data
+ * @param {Array<Object>} extractors - Array of extractor objects
+ * @param {Array} scope - Array of log rows to process
+ * @param {string|function|null} mergeStrategy - Merge strategy string or progressCallback if function passed
+ * @param {function|null} progressCallback - Optional progress callback (percent, message)
+ * @returns {Object} - Results summary
+ */
+function runMultipleExtractors(extractors, scope, mergeStrategy = 'last-wins', progressCallback = null) {
+    // If mergeStrategy is actually a function, treat it as progressCallback
+    if (typeof mergeStrategy === 'function') { progressCallback = mergeStrategy; mergeStrategy = 'last-wins'; }
+
+    const results = { total: 0, byExtractor: {} };
+
+    const sorted = (extractors || []).slice().sort((a, b) => {
+        if (a.order !== undefined && b.order !== undefined) return a.order - b.order;
+        return (a.created || '').localeCompare(b.created || '');
+    });
+
+    for (let i = 0; i < sorted.length; i++) {
+        const extractor = sorted[i];
+
+        if (progressCallback) {
+            const percent = Math.round(((i + 1) / sorted.length) * 100);
+            progressCallback(percent, `Running extractor ${i + 1}/${sorted.length}: ${extractor.name}`);
+        }
+
+        if (extractor.enabled === false) {
+            console.log('Skipping disabled extractor:', extractor.name);
+            continue;
+        }
+
+        console.log('Running extractor:', extractor.name, 'Pattern:', extractor.pattern);
+        const hits = runSingleExtractor(extractor.pattern, scope, mergeStrategy);
+        console.log('Extractor', extractor.name, 'matched', hits, 'rows');
+        results.byExtractor[extractor.id] = hits;
+        results.total += hits;
+    }
+
+    if (progressCallback) progressCallback(100, `Completed ${sorted.length} extractors · ${fmt(results.total)} matches`);
+    return results;
+}
+
+// ---------- Query Parser ----------
+
 /**
  * Query Parser - tokenizes and parses text queries into v2 filter rules
  * Supports simple field:value tokens, comparison operators, quoted strings,

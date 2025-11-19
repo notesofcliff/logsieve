@@ -15,81 +15,17 @@
  * @param {string} s
  * @returns {string}
  */
-function parseTimestampToISO(s) {
-  if (!s) return '';
-  const str = String(s).trim();
-
-  // If string appears to include an explicit timezone offset or Z, let Date handle it
-  if (/[zZ]$/.test(str) || /[+-]\d{2}:?\d{2}$/.test(str) || /[+-]\d{2}\d{2}$/.test(str)) {
-    const d = new Date(str);
-    return isNaN(d) ? '' : d.toISOString();
-  }
-
-  // ISO-ish or common naive formats: yyyy-mm-dd HH:MM:SS(.sss)
-  const parts = str.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?/);
-  if (parts) {
-    const [, y, mo, da, hh, mm, ss, frac] = parts;
-    const ms = frac ? Math.floor(Number('0.' + frac) * 1000) : 0;
-    const d = new Date(Number(y), Number(mo) - 1, Number(da), Number(hh), Number(mm), Number(ss), ms);
-    return isNaN(d) ? '' : d.toISOString();
-  }
-
-  // Handle "MMM DD HH:MM:SS" format (e.g., Oct 28 11:11:15)
-  const monthMap = {
-    'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
-    'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
-  };
-  const monthDayParts = str.match(/^([A-Za-z]{3})\s+(\d{1,2})\s+(\d{1,2}):(\d{2}):(\d{2})(?:\.(\d+))?/);
-  if (monthDayParts) {
-    const [, monthStr, day, hour, minute, second, frac] = monthDayParts;
-    const month = monthMap[monthStr];
-    if (month !== undefined) {
-      const now = new Date();
-      const currentYear = now.getFullYear();
-      const currentMonth = now.getMonth();
-      let year = currentYear;
-      if (month > currentMonth) {
-        year = currentYear - 1;
-      }
-      const ms = frac ? Math.floor(Number('0.' + frac) * 1000) : 0;
-      const d = new Date(year, month, Number(day), Number(hour), Number(minute), Number(second), ms);
-      return isNaN(d) ? '' : d.toISOString();
-    }
-  }
-
-  // Fallback to Date
-  const d = new Date(str);
-  return isNaN(d) ? '' : d.toISOString();
-}
+// `parseTimestampToISO` is provided by `shared.js` and loaded before this file.
 
 // Format an ISO or raw timestamp string to user's localized datetime with tz
-function formatLocalDatetime(isoOrRaw) {
-  if (!isoOrRaw) return '';
-  // Already an ISO or attempt to parse to ISO (works for Z and naive local)
-  const iso = parseTimestampToISO(isoOrRaw) || String(isoOrRaw);
-  const d = new Date(iso);
-  if (isNaN(d)) return String(isoOrRaw);
-  const opts = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZoneName: 'short' };
-  // Remove comma placed by locales and return a consistent format
-  return d.toLocaleString(undefined, opts).replace(',', '');
-}
+// `formatLocalDatetime` is provided by `shared.js`.
 
 /**
  * Remove timestamp prefix from log line
  * @param {string} line - Log line text
  * @returns {string} - Line without timestamp prefix
  */
-function stripPrefix(line) {
-  // First try to remove ISO-style timestamps
-  let result = line.replace(/^\s*\[?\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?\]?\s*/, "");
-
-  // If no ISO timestamp was removed, try to remove "MMM DD HH:MM:SS" format
-  if (result === line) {
-    result = line.replace(/^\s*\[?[A-Za-z]{3}\s+\d{1,2}\s+\d{1,2}:\d{2}:\d{2}(?:[.,]\d+)?\]?\s*/, "");
-  }
-
-  return result;
-}
+// `stripPrefix` (remove timestamp prefix) is provided by `shared.js`.
 
 /**
  * Check if a line starts a new exception event (even without timestamp)
@@ -97,23 +33,7 @@ function stripPrefix(line) {
  * @param {string} line - Log line text
  * @returns {boolean} - True if line starts a new exception
  */
-function isExceptionStart(line) {
-  const trimmed = line.trim();
-
-  // Java-style: Exception in thread "..." 
-  if (/^Exception in thread/i.test(trimmed)) {
-    return true;
-  }
-
-  // Generic exception with colon at start of line (not indented)
-  if (!line.startsWith(' ') && !line.startsWith('\t')) {
-    if (/^\S+Error:/.test(trimmed) || /^\S+Exception:/.test(trimmed)) {
-      return true;
-    }
-  }
-
-  return false;
-}
+// `isExceptionStart` is provided by `shared.js`.
 
 /**
  * Check if a line is a continuation line (part of a multi-line event)
@@ -124,75 +44,18 @@ function isExceptionStart(line) {
  * @param {string} line - Log line text
  * @returns {boolean} - True if line is a continuation line
  */
-function isContinuationLine(line) {
-  if (!line.trim()) return false;
-
-  // Check if line has a timestamp (if yes, it's a new event)
-  if (/^\s*\[?\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/.test(line) || /^\s*\[?[A-Za-z]{3}\s+\d{1,2}\s+\d{1,2}:\d{2}:\d{2}/.test(line)) {
-    return false;
-  }
-
-  // Check if this starts a new exception event
-  if (isExceptionStart(line)) {
-    return false;
-  }
-
-  // Common patterns for continuation lines:
-  // 1. Traceback indicator
-  if (/^Traceback \(most recent call last\):?/i.test(line.trim())) {
-    return true;
-  }
-
-  // 2. Python stack frame (starts with whitespace + "File")
-  if (/^\s+File .*line \d+/i.test(line)) {
-    return true;
-  }
-
-  // 3. Python exception types (indented or as part of traceback)
-  if (/^\s+\S+Error:/.test(line) || /^\s+\S+Exception:/.test(line)) {
-    return true;
-  }
-
-  // 4. Java/JavaScript stack trace (starts with whitespace + "at")
-  if (/^\s+at /.test(line)) {
-    return true;
-  }
-
-  // 5. Indented continuation (starts with tab or multiple spaces)
-  if (/^[\t ]{2,}/.test(line)) {
-    return true;
-  }
-
-  // 6. Exception location info (starts with whitespace)
-  if (/^\s+/.test(line) && line.trim().length > 0) {
-    return true;
-  }
-
-  return false;
-}
+// `isContinuationLine` is provided by `shared.js`.
 
 /**
  * Tokenize string for search purposes
  * @param {string} s - String to tokenize
  * @returns {Array<string>} - Array of tokens
  */
-function tokenize(s) {
-  return s.toLowerCase().split(/[^a-z0-9_]+/).filter(Boolean);
-}
+// `tokenize` is provided by `shared.js`.
 
 // ---------- Storage Manager ----------
 
-/**
- * Generate a simple UUID v4
- * @returns {string} - UUID string
- */
-function generateUUID() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    const r = Math.random() * 16 | 0;
-    const v = c === 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
-}
+// `generateUUID` is provided by `shared.js`.
 
 /**
  * Storage manager for localStorage operations
@@ -806,133 +669,11 @@ function drawSpark(canvas, arr) {
  * @param {string} s - String to escape
  * @returns {string} - HTML-escaped string
  */
-function escapeHtml(s) {
-  return s.replace(/[&<>"']/g, c => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    "\"": "&quot;",
-    "'": "&#39;"
-  }[c]));
-}
+// `escapeHtml` is provided by `shared.js`.
 
 // ---------- Pattern Extractor ----------
 
-/**
- * Run a single extractor pattern on log data
- * @param {string} pattern - Regex pattern with named groups
- * @param {Array} scope - Array of log rows to process
- * @param {string} mergeStrategy - How to merge fields: 'last-wins', 'first-wins', 'merge'
- * @returns {number} - Number of rows with captures
- */
-function runSingleExtractor(pattern, scope, mergeStrategy = 'last-wins') {
-  let re;
-  try {
-    // Create regex with global flag for matchAll
-    // Patterns are stored as plain strings without delimiters
-    re = new RegExp(pattern, 'g');
-  } catch (e) {
-    console.error('Invalid regex:', e.message, 'Pattern:', pattern);
-    return 0;
-  }
-
-  let hits = 0;
-
-  for (const r of scope) {
-    // Use matchAll to get all occurrences
-    const matches = [...r.raw.matchAll(re)];
-    if (matches.length === 0) continue;
-
-    // Collect all captures for each named group
-    const groupValues = {};
-    for (const m of matches) {
-      const g = m.groups || {};
-      for (const [key, val] of Object.entries(g)) {
-        if (!groupValues[key]) groupValues[key] = [];
-        groupValues[key].push(val);
-      }
-    }
-
-    if (Object.keys(groupValues).length === 0) continue;
-
-    // Apply merge strategy for fields
-    if (mergeStrategy === 'last-wins') {
-      r.fields = Object.assign({}, r.fields, groupValues);
-    } else if (mergeStrategy === 'first-wins') {
-      // Only add fields that don't exist
-      for (const [key, val] of Object.entries(groupValues)) {
-        if (!(key in r.fields)) {
-          r.fields[key] = val;
-        }
-      }
-    } else if (mergeStrategy === 'merge') {
-      r.fields = Object.assign({}, r.fields, groupValues);
-    }
-
-    hits++;
-
-    // Track field names for dynamic columns
-    for (const key of Object.keys(groupValues)) {
-      if (key !== 'ts' && key !== 'level' && key !== 'message') {
-        fieldNames.add(key);
-      }
-    }
-
-    // Update structured fields if captured (use first match for these)
-    if (groupValues.ts && groupValues.ts.length > 0) {
-      const iso = parseTimestampToISO(groupValues.ts[0]);
-      if (iso) r.ts = iso;
-    }
-    if (groupValues.level && groupValues.level.length > 0) {
-      r.level = String(groupValues.level[0]).toUpperCase();
-      if (r.level === 'WARN') r.level = 'WARNING';
-    }
-    if (groupValues.message && groupValues.message.length > 0) {
-      r.message = groupValues.message[0];
-    }
-  }
-
-  return hits;
-}
-
-/**
- * Run multiple extractors on log data
- * @param {Array<Object>} extractors - Array of extractor objects
- * @param {Array} scope - Array of log rows to process
- * @returns {Object} - Results summary
- */
-function runMultipleExtractors(extractors, scope) {
-  const prefs = Storage.getPrefs();
-  const mergeStrategy = prefs.extractorMergeStrategy || 'last-wins';
-
-  const results = {
-    total: 0,
-    byExtractor: {}
-  };
-
-  // Sort by order if available, otherwise by creation date
-  const sorted = extractors.slice().sort((a, b) => {
-    if (a.order !== undefined && b.order !== undefined) {
-      return a.order - b.order;
-    }
-    return (a.created || '').localeCompare(b.created || '');
-  });
-
-  for (const extractor of sorted) {
-    // if (extractor.enabled === false) {
-    //   console.log('Skipping disabled extractor:', extractor.name);
-    //   continue;
-    // }
-
-    console.log('Running extractor:', extractor.name, 'Pattern:', extractor.pattern);
-    const hits = runSingleExtractor(extractor.pattern, scope, mergeStrategy);
-    console.log('Extractor', extractor.name, 'matched', hits, 'rows');
-    results.byExtractor[extractor.id] = hits;
-    results.total += hits;
-  }
-
-  return results;
-}
+// `runSingleExtractor` and `runMultipleExtractors` are provided by `shared.js`.
 
 /**
  * Update sort dropdown with extracted field names
@@ -1209,7 +950,9 @@ function runExtractor() {
   }
 
   const scope = $("#extractScope").value === 'filtered' ? view : rows;
-  const hits = runSingleExtractor(pattern, scope);
+  const prefs = Storage.getPrefs();
+  const mergeStrategy = prefs.extractorMergeStrategy || 'last-wins';
+  const hits = runSingleExtractor(pattern, scope, mergeStrategy);
 
   $("#extractInfo").textContent = `Applied to ${fmt(scope.length)} rows · ${fmt(hits)} with captures`;
   updateSortOptions();
