@@ -2045,7 +2045,72 @@ function initializeEventHandlers() {
   fileInput.addEventListener('change', e => {
     const f = e.target.files?.[0];
     if (f) handleFile(f);
+    e.target.value = ''; // Reset input to allow re-selecting same file
   });
+
+  /**
+   * Handle file selection and read content in chunks
+   * @param {File} file - Selected file
+   */
+  function handleFile(file) {
+    // Reset state
+    $("#fileTag").textContent = file.name;
+    $("#uploadProgress").style.display = 'block';
+    $("#uploadProgressFill").style.width = '0%';
+    $("#uploadProgressText").textContent = 'Starting upload...';
+
+    // Reset worker state
+    sendToWorker('PARSE_START');
+
+    const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
+    const fileSize = file.size;
+    let offset = 0;
+
+    // Determine format
+    let format = 'log';
+    if (file.name.endsWith('.json')) format = 'json';
+    else if (file.name.endsWith('.csv')) format = 'csv';
+    else if (file.name.endsWith('.ndjson')) format = 'ndjson';
+
+    function readNextChunk() {
+      const slice = file.slice(offset, offset + CHUNK_SIZE);
+      const reader = new FileReader();
+
+      reader.onload = (e) => {
+        const chunk = e.target.result;
+        offset += chunk.length;
+
+        // Update progress
+        const percent = Math.round((offset / fileSize) * 100);
+        $("#uploadProgressFill").style.width = percent + '%';
+        $("#uploadProgressText").textContent = `Reading ${fmt(offset)} / ${fmt(fileSize)} bytes...`;
+
+        // Send chunk to worker
+        sendToWorker('PARSE_CHUNK', { chunk, format });
+
+        if (offset < fileSize) {
+          // Read next chunk
+          // Use setTimeout to allow UI to update
+          setTimeout(readNextChunk, 0);
+        } else {
+          // Done reading
+          $("#uploadProgressText").textContent = 'Finalizing...';
+          sendToWorker('PARSE_END', { format });
+        }
+      };
+
+      reader.onerror = (e) => {
+        console.error('File read error:', e);
+        alert('Error reading file');
+        $("#uploadProgress").style.display = 'none';
+      };
+
+      reader.readAsText(slice);
+    }
+
+    // Start reading
+    readNextChunk();
+  }
 
   // Extractor library
   $("#addExtractor").addEventListener('click', () => openExtractorModal());

@@ -14,6 +14,15 @@ let currentFilterConfig = null;
 let appliedFilterConfig = null;
 let appliedAdvancedQuery = null;
 
+// Parsing State (for chunked processing)
+let parserState = {
+  buffer: '',          // Remainder from previous chunk
+  currentEntry: null,  // Current multi-line entry being built
+  id: 1,               // Next row ID
+  totalBytes: 0,       // Total bytes processed
+  startTime: 0         // Start time for performance tracking
+};
+
 // ---------- Utilities ----------
 
 /**
@@ -24,40 +33,69 @@ const isWorker = typeof self !== 'undefined' && typeof window === 'undefined';
 // ---------- Data Parsing ----------
 
 /**
- * Parse raw log text into structured log entries
- * Supports multi-line events (tracebacks, stack traces)
- * @param {string} text - Raw log file content
- * @param {function} progressCallback - Optional callback for progress updates
- * @returns {Array<Object>} - Array of parsed log entries
+ * Reset parser state
  */
-function parseLogText(text, progressCallback = null) {
-  const out = [];
-  const lines = text.split(/\r?\n/);
-  let id = 1;
-  let currentEntry = null;
+function resetParserState() {
+  parserState = {
+    buffer: '',
+    currentEntry: null,
+    id: 1,
+    totalBytes: 0,
+    startTime: performance.now()
+  };
+  rows = [];
+  fieldNames.clear();
+}
+
+/**
+ * Parse a chunk of log text
+ * @param {string} chunk - New text chunk
+ * @param {boolean} isLast - Whether this is the last chunk
+ * @param {function} progressCallback - Callback for progress
+ */
+function parseLogChunk(chunk, isLast, progressCallback = null) {
+  // Append new chunk to buffer
+  parserState.buffer += chunk;
+  parserState.totalBytes += chunk.length;
+
+  // Find the last newline to safely process up to that point
+  // If it's the last chunk, we process everything
+  let lastNewlineIndex = parserState.buffer.lastIndexOf('\n');
+
+  if (!isLast && lastNewlineIndex === -1) {
+    // No newline in this chunk and not the last one? Wait for more data.
+    return;
+  }
+
+  let textToProcess;
+  if (isLast) {
+    textToProcess = parserState.buffer;
+    parserState.buffer = '';
+  } else {
+    textToProcess = parserState.buffer.substring(0, lastNewlineIndex);
+    parserState.buffer = parserState.buffer.substring(lastNewlineIndex + 1);
+  }
+
+  const lines = textToProcess.split(/\r?\n/);
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
+    // Skip empty lines unless it's inside a multi-line message (though usually we trim)
     if (!line.trim()) continue;
 
-    // Send progress update every 1000 lines
-    if (progressCallback && i % 1000 === 0) {
-      progressCallback(Math.round((i / lines.length) * 100), `Parsing ${fmt(i)}/${fmt(lines.length)} lines...`);
-    }
-
     // Check if this is a continuation of the previous entry
-    if (currentEntry && isContinuationLine(line)) {
+    if (parserState.currentEntry && isContinuationLine(line)) {
       // Append to current entry's raw and message
-      currentEntry.raw += '\n' + line;
-      currentEntry.message += '\n' + line;
+      parserState.currentEntry.raw += '\n' + line;
+      parserState.currentEntry.message += '\n' + line;
       // Update search index
-      currentEntry._lc = (currentEntry.raw + " " + currentEntry.message).toLowerCase();
+      parserState.currentEntry._lc = (parserState.currentEntry.raw + " " + parserState.currentEntry.message).toLowerCase();
       continue;
     }
 
     // If we have a current entry, save it before starting a new one
-    if (currentEntry) {
-      out.push(currentEntry);
+    if (parserState.currentEntry) {
+      rows.push(parserState.currentEntry);
     }
 
     // Start a new entry
@@ -65,8 +103,8 @@ function parseLogText(text, progressCallback = null) {
     const level = guessLevel(line);
     const msg = stripPrefix(line) || line; // Use full line if no prefix found
 
-    currentEntry = {
-      id: id++,
+    parserState.currentEntry = {
+      id: parserState.id++,
       ts,
       level,
       message: msg,
@@ -76,16 +114,11 @@ function parseLogText(text, progressCallback = null) {
     };
   }
 
-  // Don't forget the last entry
-  if (currentEntry) {
-    out.push(currentEntry);
+  // If this is the last chunk, push the final entry
+  if (isLast && parserState.currentEntry) {
+    rows.push(parserState.currentEntry);
+    parserState.currentEntry = null;
   }
-
-  if (progressCallback) {
-    progressCallback(100, `Parsed ${fmt(out.length)} entries`);
-  }
-
-  return out;
 }
 
 /**
@@ -438,9 +471,55 @@ if (isWorker) {
 
     try {
       switch (type) {
+        case 'PARSE_CHUNK': {
+          const { chunk, format } = data;
+          // Currently only supporting chunked parsing for raw logs
+          // CSV/JSON still use whole-file parsing for now as they are harder to chunk safely
+          if (format !== 'log' && format !== 'txt') {
+            // Accumulate in buffer for non-log formats
+            parserState.buffer += chunk;
+            break;
+          }
+
+          parseLogChunk(chunk, false);
+          break;
+        }
+
+        case 'PARSE_END': {
+          const { format } = data;
+
+          if (format === 'csv') {
+            rows = parseCSV(parserState.buffer);
+          } else if (format === 'json') {
+            rows = parseJSON(parserState.buffer);
+          } else {
+            // Finalize log parsing
+            parseLogChunk('', true);
+          }
+
+          FieldRegistry.updateFromDataset(rows);
+
+          self.postMessage({
+            type: 'PARSE_COMPLETE',
+            data: {
+              rowCount: rows.length,
+              fieldNames: [...fieldNames],
+              fieldRegistry: FieldRegistry.serialize()
+            },
+            id
+          });
+          break;
+        }
+
+        case 'PARSE_START': {
+          resetParserState();
+          break;
+        }
+
         case 'PARSE_DATA': {
+          // Legacy one-shot parsing
           const { text, format } = data;
-          fieldNames.clear();
+          resetParserState();
 
           let parsedRows;
           const progressCallback = (percent, message) => {
@@ -459,7 +538,9 @@ if (isWorker) {
               parsedRows = parseJSON(text, progressCallback);
               break;
             default:
-              parsedRows = parseLogText(text, progressCallback);
+              // Use the new chunk logic but for the whole file
+              parseLogChunk(text, true);
+              parsedRows = rows;
               break;
           }
 
