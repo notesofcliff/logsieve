@@ -13,6 +13,13 @@
 const fmt = (n) => n.toLocaleString();
 
 /**
+ * Simple DOM selector helper. Use like `$('#id')` or `document.querySelector` style selectors.
+ * @param {string} sel - CSS selector (e.g. '#id' or '.class' or 'div > span')
+ * @returns {Element|null}
+ */
+function $(sel) { return document.querySelector(sel); }
+
+/**
  * Generate a simple UUID v4
  * @returns {string} - UUID string
  */

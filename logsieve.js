@@ -1093,54 +1093,56 @@ function renderColumnsPanel() {
     renderColumnsPanel();
   });
 
-  // Drag & drop: prefer SortableJS (touch-friendly). If not present, fall back to native HTML5 DnD.
-  if (typeof Sortable !== 'undefined') {
-    // Destroy previous instance if any
-    try {
-      if (list._sortable && typeof list._sortable.destroy === 'function') list._sortable.destroy();
-    } catch (e) { /* ignore */ }
+  // Native HTML5 drag & drop implementation for reordering columns.
+  // Uses `draggable="true"` on `.library-item` elements and a helper
+  // to determine insertion point while dragging.
+  let dragSrcEl = null;
 
-    list._sortable = Sortable.create(list, {
-      handle: '.drag-handle',
-      animation: 150,
-      onEnd: function (evt) {
-        // Persist new order and re-render results
-        const newOrder = [...list.querySelectorAll('.library-item')].map(n => n.dataset.col);
-        columnOrder = newOrder.slice();
-        saveColumnOrderToPrefs();
-        render();
+  list.addEventListener('dragstart', (e) => {
+    const el = e.target.closest('.library-item');
+    if (!el) return;
+    dragSrcEl = el;
+    el.classList.add('dragging');
+    try { e.dataTransfer.setData('text/plain', el.dataset.col); } catch (err) { /* some browsers may throw */ }
+    e.dataTransfer.effectAllowed = 'move';
+  });
+
+  list.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    const afterEl = getDragAfterElement(list, e.clientY);
+    if (!dragSrcEl) return;
+    if (!afterEl) list.appendChild(dragSrcEl);
+    else list.insertBefore(dragSrcEl, afterEl);
+  });
+
+  list.addEventListener('dragend', (e) => {
+    if (dragSrcEl) dragSrcEl.classList.remove('dragging');
+    // Update columnOrder from current DOM order
+    const newOrder = [...list.querySelectorAll('.library-item')].map(n => n.dataset.col);
+    columnOrder = newOrder.slice();
+    saveColumnOrderToPrefs();
+    render();
+    dragSrcEl = null;
+  });
+
+  // Helper: find the element after the given vertical coordinate `y`.
+  // Excludes the currently dragging element (which has class `dragging`).
+  function getDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll('.library-item:not(.dragging)')];
+
+    let closest = { offset: Number.NEGATIVE_INFINITY, element: null };
+
+    for (const child of draggableElements) {
+      const box = child.getBoundingClientRect();
+      // Calculate offset from the vertical center of the element
+      const offset = y - box.top - box.height / 2;
+      // We want the element with the smallest negative offset (closest above)
+      if (offset < 0 && offset > closest.offset) {
+        closest = { offset, element: child };
       }
-    });
-  } else {
-    // Native HTML5 drag & drop fallback (desktop browsers)
-    let dragSrcEl = null;
+    }
 
-    list.addEventListener('dragstart', (e) => {
-      const el = e.target.closest('.library-item');
-      if (!el) return;
-      dragSrcEl = el;
-      el.classList.add('dragging');
-      try { e.dataTransfer.setData('text/plain', el.dataset.col); } catch (err) { /* some browsers may throw */ }
-      e.dataTransfer.effectAllowed = 'move';
-    });
-
-    list.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      const afterEl = getDragAfterElement(list, e.clientY);
-      if (!dragSrcEl) return;
-      if (!afterEl) list.appendChild(dragSrcEl);
-      else list.insertBefore(dragSrcEl, afterEl);
-    });
-
-    list.addEventListener('dragend', (e) => {
-      if (dragSrcEl) dragSrcEl.classList.remove('dragging');
-      // Update columnOrder from current DOM order
-      const newOrder = [...list.querySelectorAll('.library-item')].map(n => n.dataset.col);
-      columnOrder = newOrder.slice();
-      saveColumnOrderToPrefs();
-      render();
-      dragSrcEl = null;
-    });
+    return closest.element;
   }
 }
 
