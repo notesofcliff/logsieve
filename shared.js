@@ -10,7 +10,7 @@
  * @param {number} n - Number to format
  * @returns {string} - Formatted number
  */
-const fmt = (n) => n.toLocaleString();
+const fmt = (n) => (n === undefined || n === null) ? '—' : n.toLocaleString();
 
 /**
  * Simple DOM selector helper. Use like `$('#id')` or `document.querySelector` style selectors.
