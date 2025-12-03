@@ -319,10 +319,12 @@ function handleWorkerMessage(e) {
 
   // Resolve pending request if this is a response to a specific request
   if (id && pendingRequests.has(id)) {
-    const resolve = pendingRequests.get(id);
-    pendingRequests.delete(id);
-    resolve({ type, data });
-    return;
+    if (type !== 'PROGRESS') {
+      const resolve = pendingRequests.get(id);
+      pendingRequests.delete(id);
+      resolve({ type, data });
+      return;
+    }
   }
 
   // Handle unsolicited messages
@@ -390,6 +392,11 @@ function handleWorkerMessage(e) {
       // This is handled by the pending request resolver
       break;
 
+    case 'SUMMARY_STATS_COMPLETE':
+      $("#summary-progress").style.display = 'none';
+      renderSummaryStats(data);
+      break;
+
     case 'PROGRESS':
       const { percent, message, operation } = data;
       if (operation === 'parsing') {
@@ -417,6 +424,13 @@ function handleWorkerMessage(e) {
         const container = $("#savedFilterProgress");
         const fill = $("#savedFilterProgressFill");
         const text = $("#savedFilterProgressText");
+        container.style.display = 'block';
+        fill.style.width = percent + '%';
+        text.textContent = message;
+      } else if (operation === 'summary') {
+        const container = $("#summary-progress");
+        const fill = $("#summary-progress-fill");
+        const text = $("#summary-progress-text");
         container.style.display = 'block';
         fill.style.width = percent + '%';
         text.textContent = message;
@@ -2226,6 +2240,14 @@ function initializeEventHandlers() {
   moveSearchContentIntoTabs();
 }
 
+// ---------- Summary Stats Event Listener ----------
+
+$("#summary-details").addEventListener('toggle', () => {
+  if ($("#summary-details").open) {
+    computeSummaryStats();
+  }
+});
+
 /**
  * Move the content of existing top-level sections into tab panels and remove originals
  */
@@ -2421,4 +2443,39 @@ if (document.readyState === 'loading') {
   initializeEventHandlers();
   initializeThemeToggle();
   initializeDropdowns();
+}
+
+// ---------- Summary Stats ----------
+
+function computeSummaryStats() {
+  $("#summary-progress").style.display = 'block';
+  $("#summary-results").innerHTML = '';
+  sendToWorker('COMPUTE_SUMMARY_STATS', {}, true).then(response => {
+    renderSummaryStats(response.data);
+  });
+}
+
+function renderSummaryStats(stats) {
+  const container = $("#summary-results");
+  let html = '';
+  for (const [fieldName, fieldStats] of Object.entries(stats)) {
+    html += `<div class="field-summary" style="margin-bottom:15px; padding:10px; border:1px solid var(--border); border-radius:4px;">`;
+    html += `<h4 style="margin:0 0 8px 0">${escapeHtml(fieldName)} (${fieldStats.type})</h4>`;
+    html += `<p style="margin:4px 0">With value: ${fmt(fieldStats.withValue)}, Without: ${fmt(fieldStats.withoutValue)}, Unique: ${fmt(fieldStats.unique)}</p>`;
+    if (fieldStats.type === 'numeric' && fieldStats.min !== undefined) {
+      html += `<p style="margin:4px 0">Min: ${fieldStats.min.toFixed(2)}, Max: ${fieldStats.max.toFixed(2)}, Mean: ${fieldStats.mean.toFixed(2)}, Median: ${fieldStats.median.toFixed(2)}, Mode: ${fieldStats.mode !== null ? fieldStats.mode.toFixed(2) : 'N/A'}</p>`;
+    } else if (fieldStats.type === 'date' && fieldStats.earliest) {
+      html += `<p style="margin:4px 0">Earliest: ${formatLocalDatetime(fieldStats.earliest)}, Latest: ${formatLocalDatetime(fieldStats.latest)}</p>`;
+    } else if (fieldStats.type === 'text' && fieldStats.minLen !== undefined) {
+      html += `<p style="margin:4px 0">Min len: ${fieldStats.minLen}, Max len: ${fieldStats.maxLen}, Avg len: ${fieldStats.avgLen.toFixed(1)}</p>`;
+      if (fieldStats.mostCommon && fieldStats.mostCommon.length) {
+        html += `<p style="margin:4px 0">Most common: ${fieldStats.mostCommon.map(mc => `${escapeHtml(mc.val)} (${mc.count})`).join(', ')}</p>`;
+      }
+    } else if (fieldStats.type === 'array') {
+      html += `<p style="margin:4px 0">Type: array</p>`;
+    }
+    html += `</div>`;
+  }
+  container.innerHTML = html;
+  $("#summary-progress").style.display = 'none';
 }

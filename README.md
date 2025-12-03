@@ -18,6 +18,7 @@ A lightweight, client-side web application for exploring and filtering log files
 - **Saved filters** - Store filter presets for quick access to common queries
 - **Import/export** - Share extractor libraries and filter configurations across devices
 - **Visual summaries** - Get log level counts and timeline sparkline charts
+- **Summary Statistics (Beta)** - View a best-effort overview of all fields in your current results, including type detection, value distributions, and basic stats. Summary reflects only the filtered/extracted results you are viewing. If you change filters or extractions, collapse and re-expand the summary section to refresh. If a field is interpreted incorrectly, please open a GitHub issue.
  - **Export capabilities** - Export filtered results as JSON or CSV (exports respect column order and visible columns)
  - **Columns control** - Show/hide and reorder result table columns (drag to reorder)
 - **Completely offline** - No data leaves your machine, no server required
@@ -256,23 +257,23 @@ LogSieve lets you control which columns appear in the Results table and in what 
 
 ### Summary Statistics
 
-LogSieve automatically computes summary statistics with each filter operation:
 
-- Total row count
-- Log level distribution  
-- Timeline sparkline chart (rendered on HTML5 canvas)
+### Summary Statistics (Beta)
 
-```js
-const buckets = new Map();
-for (const r of view) {
-  if (!r.ts) continue;
-  const key = r.ts.slice(0,16); // minute bucket
-  buckets.set(key, (buckets.get(key)||0) + 1);
-}
-drawSpark(canvas, [...buckets.values()]);
-```
+LogSieve provides a **Summary Statistics** panel at the top of the Results section. This feature gives a best-effort overview of all fields in your current results, including detected field types (text, number, date, array, etc.), value distributions, and basic stats. Summary stats are computed in your browser using a background thread for responsiveness.
 
-This provides a visual "heartbeat" of log activity over time.
+**How to use:**
+- The summary reflects only the filtered and extracted results you are currently viewing.
+- If you change your filters or run new extractors and want the summary to update, simply collapse and re-expand the Summary Statistics section to recompute stats for the latest results.
+- All field detection and statistics are best-effort; some field types or values may be interpreted incorrectly depending on your log format.
+- If you notice a field is interpreted incorrectly, please [open a GitHub issue](https://github.com/notesofcliff/logsieve/issues) describing the problem!
+
+**What it shows:**
+- Detected field types (text, number, date, array, etc.)
+- Value distributions and basic statistics for each field
+- Works with filtered and extracted data
+
+This feature is experimental and may not always interpret field types or values perfectly. All results are best-effort and may not be perfect for every log format.
 
 ### Storage Architecture
 

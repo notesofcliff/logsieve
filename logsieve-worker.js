@@ -223,11 +223,11 @@ function parseCSV(text, progressCallback = null) {
               row.fields[header] = JSON.parse(values[idx]);
               fieldNames.add(header);
             } catch (e) {
-              row.fields[header] = [values[idx]];
+              row.fields[header] = values[idx];
               fieldNames.add(header);
             }
           } else {
-            row.fields[header] = [values[idx]];
+            row.fields[header] = values[idx];
             fieldNames.add(header);
           }
         }
@@ -314,11 +314,10 @@ function parseJSON(text, progressCallback = null) {
 
     for (const [key, value] of Object.entries(item)) {
       if (!standardProps.has(key)) {
-        // Wrap values in arrays for consistency with extractor output
         if (Array.isArray(value)) {
           row.fields[key] = value;
         } else if (value !== null && value !== undefined) {
-          row.fields[key] = [String(value)];
+          row.fields[key] = value;
         }
         fieldNames.add(key);
       }
@@ -330,7 +329,7 @@ function parseJSON(text, progressCallback = null) {
         if (Array.isArray(value)) {
           row.fields[key] = value;
         } else if (value !== null && value !== undefined) {
-          row.fields[key] = [String(value)];
+          row.fields[key] = value;
         }
         fieldNames.add(key);
       }
@@ -661,6 +660,23 @@ if (isWorker) {
           break;
         }
 
+        case 'COMPUTE_SUMMARY_STATS': {
+          const progressCallback = (percent, message) => {
+            self.postMessage({
+              type: 'PROGRESS',
+              data: { percent, message, operation: 'summary' },
+              id
+            });
+          };
+          const stats = computeSummaryStats(view, FieldRegistry, progressCallback);
+          self.postMessage({
+            type: 'SUMMARY_STATS_COMPLETE',
+            data: stats,
+            id
+          });
+          break;
+        }
+
         default:
           self.postMessage({
             type: 'ERROR',
@@ -676,4 +692,94 @@ if (isWorker) {
       });
     }
   };
+}
+
+function computeSummaryStats(view, fieldRegistry, progressCallback) {
+  const allFields = ['id', 'ts', 'level', 'message', 'raw', ...Array.from(fieldNames)];
+  const result = {};
+  let fieldIndex = 0;
+  const totalFields = allFields.length;
+  for (const field of allFields) {
+    progressCallback(Math.round((fieldIndex / totalFields) * 100), `Computing stats for ${field}...`);
+    const fieldStats = computeFieldStats(view, field, fieldRegistry.get(field));
+    result[field] = fieldStats;
+    fieldIndex++;
+  }
+  return result;
+}
+
+function computeFieldStats(view, fieldName, fieldMeta) {
+  const values = [];
+  for (const row of view) {
+    let val;
+    if (['id', 'ts', 'level', 'message', 'raw'].includes(fieldName)) {
+      val = row[fieldName];
+    } else {
+      val = row.fields?.[fieldName];
+    }
+    if (val !== undefined && val !== null && val !== '') {
+      values.push(val);
+    }
+  }
+  const withValue = values.length;
+  const withoutValue = view.length - withValue;
+  const uniqueMap = new Map();
+  for (const val of values) {
+    let key;
+    try {
+      key = Array.isArray(val) || (typeof val === 'object' && val !== null) ? JSON.stringify(val) : String(val);
+    } catch {
+      key = '[unserializable]';
+    }
+    uniqueMap.set(key, (uniqueMap.get(key) || 0) + 1);
+  }
+  const unique = uniqueMap.size;
+  const type = fieldMeta?.type || 'unknown';
+  const stats = { type, withValue, withoutValue, unique };
+  if (type === 'array' || (typeof values[0] === 'object' && values[0] !== null && !Array.isArray(values[0]))) {
+    return stats; // only general
+  }
+  if (type === 'numeric') {
+    const nums = values.map(v => parseFloat(v)).filter(n => !isNaN(n));
+    if (nums.length === 0) return stats;
+    const sorted = nums.sort((a, b) => a - b);
+    stats.min = sorted[0];
+    stats.max = sorted[sorted.length - 1];
+    stats.mean = nums.reduce((a, b) => a + b, 0) / nums.length;
+    const mid = Math.floor(sorted.length / 2);
+    stats.median = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+    const freq = {};
+    for (const n of nums) {
+      freq[n] = (freq[n] || 0) + 1;
+    }
+    let mode = null;
+    let maxFreq = 0;
+    for (const [n, f] of Object.entries(freq)) {
+      if (f > maxFreq) {
+        maxFreq = f;
+        mode = parseFloat(n);
+      }
+    }
+    stats.mode = mode;
+  } else if (type === 'date') {
+    const dates = values.map(v => new Date(v)).filter(d => !isNaN(d.getTime()));
+    if (dates.length === 0) return stats;
+    const isos = dates.map(d => d.toISOString()).sort();
+    stats.earliest = isos[0];
+    stats.latest = isos[isos.length - 1];
+  } else if (type === 'text') {
+    const strs = values.map(v => String(v));
+    if (strs.length === 0) return stats;
+    const lengths = strs.map(s => s.length);
+    stats.minLen = Math.min(...lengths);
+    stats.maxLen = Math.max(...lengths);
+    stats.avgLen = lengths.reduce((a, b) => a + b, 0) / lengths.length;
+    const freq = {};
+    for (const s of strs) {
+      freq[s] = (freq[s] || 0) + 1;
+    }
+    const sortedFreq = Object.entries(freq).sort((a, b) => b[1] - a[1]);
+    stats.mostCommon = sortedFreq.slice(0, 3).map(([val, count]) => ({ val, count }));
+  }
+  return stats;
 }

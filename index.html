@@ -231,20 +231,26 @@
                 restore as much as possible and leave blank fields for you to fix before reapplying.</p>
 
               <h3 style="margin-top:1.5rem; font-size:15px; color:var(--ink)">Results</h3>
+
               <p>View and interact with your filtered log data. Above the table, get a quick overview:</p>
               <ul style="margin:8px 0; padding-left:20px">
-                <li><strong>Statistics</strong> - See total row count and breakdown by log level (INFO, WARN, ERROR)
-                </li>
+                <li><strong>Statistics</strong> - See total row count and breakdown by log level (INFO, WARN, ERROR)</li>
                 <li><strong>File Info</strong> - View the filename, total line count, and active filters</li>
-                <li><strong>Timeline Sparkline</strong> - Visual chart showing log activity over time (grouped by
-                  minute)</li>
+                <li><strong>Timeline Sparkline</strong> - Visual chart showing log activity over time (grouped by minute)</li>
               </ul>
-              <p>The table displays ID, Timestamp, Level, Message, and any extracted fields as columns. Navigate through
-                results using pagination buttons or see current page info. Click "raw" details toggle on any row to see
-                the original log line. Multi-line events like stack traces are kept together as single entries.</p>
+              <p>The table displays ID, Timestamp, Level, Message, and any extracted fields as columns. Navigate through results using pagination buttons or see current page info. Click "raw" details toggle on any row to see the original log line. Multi-line events like stack traces are kept together as single entries.</p>
               <p><strong>Note:</strong> Statistics update automatically whenever you apply filters or load new data.</p>
-              <p><strong>Tip:</strong> This section is always visible so you can see your data while working with other
-                sections.</p>
+              <p><strong>Tip:</strong> This section is always visible so you can see your data while working with other sections.</p>
+
+              <h4 style="margin-top:1rem; font-size:14px; color:var(--ink)">Summary Statistics (Beta)</h4>
+              <p>The <strong>Summary Statistics</strong> panel (at the top of the Results section) provides a best-effort overview of all fields in your current results, including type detection, value distributions, and basic stats. This feature is experimental and may not always interpret field types or values perfectly.</p>
+              <ul style="margin:8px 0; padding-left:20px">
+                <li>Shows detected field types (text, number, date, array, etc.) and summary stats for each field</li>
+                <li>Works with filtered and extracted data—summary reflects only the current results</li>
+                <li><strong>To refresh the summary after changing filters or extractors:</strong> simply collapse and re-expand the Summary Statistics section to recompute stats for the latest results</li>
+                <li>If you notice a field is interpreted incorrectly, please <a href="https://github.com/notesofcliff/logsieve/issues" target="_blank">open a GitHub issue</a> describing the problem!</li>
+              </ul>
+              <p style="color:var(--muted); font-size:13px">Summary statistics are computed in your browser using a background thread for responsiveness. All results are best-effort and may not be perfect for every log format.</p>
 
               <h4 style="margin-top:1rem; font-size:14px; color:var(--ink)">Tips & Troubleshooting</h4>
               <ul style="margin:8px 0; padding-left:20px">
@@ -490,6 +496,16 @@
         <h2 class="section-header">
           <span>Results</span>
         </h2>
+        <details id="summary-details" style="margin-top:20px">
+          <summary style="cursor:pointer; font-weight:500; margin-bottom:10px">Summary Statistics</summary>
+          <div id="summary-progress" class="progress-container" style="display:none;">
+            <div class="progress-bar">
+              <div class="progress-fill" id="summary-progress-fill"></div>
+            </div>
+            <div class="progress-text" id="summary-progress-text">Computing statistics...</div>
+          </div>
+          <div id="summary-results"></div>
+        </details>
         <div class="section-content">
           <div class="pad">
             <div class="stats" style="margin-bottom:12px">
