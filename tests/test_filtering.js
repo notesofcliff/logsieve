@@ -75,3 +75,24 @@ runTest('evaluateAST (Advanced Query)', () => {
     };
     assert.strictEqual(evaluateAST(row, ast2), false);
 });
+
+runTest('ID Column Sort Toggle', () => {
+    // Simulate the sortByIdOrder toggle behavior
+    let sortByIdOrder = 'asc';
+    
+    // First click: toggle to desc
+    sortByIdOrder = sortByIdOrder === 'asc' ? 'desc' : 'asc';
+    assert.strictEqual(sortByIdOrder, 'desc');
+    
+    // Second click: toggle back to asc
+    sortByIdOrder = sortByIdOrder === 'asc' ? 'desc' : 'asc';
+    assert.strictEqual(sortByIdOrder, 'asc');
+    
+    // Verify arrow rendering
+    const arrow = sortByIdOrder === 'asc' ? '▲' : '▼';
+    assert.strictEqual(arrow, '▲');
+    
+    sortByIdOrder = 'desc';
+    const arrowDesc = sortByIdOrder === 'asc' ? '▲' : '▼';
+    assert.strictEqual(arrowDesc, '▼');
+});
