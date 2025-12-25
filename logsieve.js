@@ -294,6 +294,7 @@ let appliedFilterConfig = null;
 let appliedAdvancedQuery = null;
 // Detected user's timezone name (IANA). Set at startup for consistent rendering
 const userTimeZone = (Intl && Intl.DateTimeFormat && Intl.DateTimeFormat().resolvedOptions().timeZone) || 'Local';
+let sortByIdOrder = 'asc';
 
 // ---------- Worker Communication ----------
 
@@ -568,7 +569,10 @@ function renderPage(pageData) {
 
   // Build header cells matching displayed columns
   const headerHtml = displayedCols.map(col => {
-    if (col === 'id') return `<th style="width:72px">ID</th>`;
+    if (col === 'id') {
+    const arrow = sortByIdOrder === 'asc' ? '▲' : '▼';
+    return `<th style="width:72px; cursor:pointer" class="id-header">ID ${arrow}</th>`;
+      }
     if (col === 'ts') return `<th style="width:210px">Timestamp <br/>(<span id="tzLabel">${escapeHtml(userTimeZone)}</span>)</th>`;
     if (col === 'level') return `<th style="width:120px">Level</th>`;
     if (col === 'message') return `<th style="max-width:80ch">Message</th>`;
@@ -576,6 +580,17 @@ function renderPage(pageData) {
   }).join('');
 
   theadRow.innerHTML = headerHtml;
+
+  // Attach click handler to ID header
+const idHeader = theadRow.querySelector('.id-header');
+    if (idHeader) {
+      idHeader.addEventListener('click', () => {
+        sortByIdOrder = sortByIdOrder === 'asc' ? 'desc' : 'asc';
+        $("#sort").value = 'id';
+        $("#order").value = sortByIdOrder;
+        applyFilters();
+      });
+    }
 
   const pageRows = pageData.pageRows;
   const frag = document.createDocumentFragment();
